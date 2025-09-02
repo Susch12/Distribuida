@@ -1,0 +1,75 @@
+{
+  "directory": "/home/susch/Documents/Uni/progra_distribuida/DNS",
+  "files": [
+    {
+      "name": "Flag_1",
+      "extension": ".txt",
+      "published": true,
+      "ttl": 500,
+      "last_seen": "2025-08-28T02:20:29.288019702-06:00"
+    },
+    {
+      "name": "client",
+      "extension": ".go",
+      "published": true,
+      "ttl": 100,
+      "last_seen": "2025-08-28T02:20:29.288020824-06:00"
+    },
+    {
+      "name": "config",
+      "extension": ".json",
+      "published": false,
+      "ttl": 0,
+      "last_seen": "2025-08-28T02:20:29.288021435-06:00"
+    },
+    {
+      "name": "log",
+      "extension": ".log",
+      "published": false,
+      "ttl": 0,
+      "last_seen": "2025-08-28T02:20:33.639462821-06:00"
+    },
+    {
+      "name": "main",
+      "extension": ".go",
+      "published": true,
+      "ttl": 2,
+      "last_seen": "2025-08-28T02:20:36.397057243-06:00"
+    },
+    {
+      "name": "notes",
+      "extension": ".txt",
+      "published": true,
+      "ttl": 900,
+      "last_seen": "2025-08-28T02:20:36.397060038-06:00"
+    },
+    {
+      "name": "try",
+      "extension": ".go",
+      "published": false,
+      "ttl": 0,
+      "last_seen": "2025-08-28T02:20:36.397060559-06:00"
+    },
+    {
+      "name": "tryII",
+      "extension": ".go",
+      "published": false,
+      "ttl": 0,
+      "last_seen": "2025-08-28T02:20:36.39706104-06:00"
+    },
+    {
+      "name": "tryIII",
+      "extension": ".go",
+      "published": false,
+      "ttl": 0,
+      "last_seen": "2025-08-28T02:20:36.397061521-06:00"
+    },
+    {
+      "name": "tryIV",
+      "extension": ".go",
+      "published": false,
+      "ttl": 0,
+      "last_seen": "2025-08-28T02:20:36.397069116-06:00"
+    }
+  ]
+}

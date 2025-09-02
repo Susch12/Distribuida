@@ -1,0 +1,13 @@
+[!] Crear un proceso que actúe como servidor de nombres de recursos de archivo.
+
+[+] El proceso debe obtener la lista de archivos de una carpeta de la computadora (especificada por el usuario) y crear una lista dinámica de objetos que contenga:
+- Nombre del archivo y extensión
+- Permitir al usuario definir qué archivos pueden publicarse y cuáles no y el tiempo de actualización del registro (TTL) (guardar un archivo de configuración)
+- Crear un hilo que actualice la lista de archivos cada 5 minutos, si hay un archivo que no estaba en la lista anterior, entonces debe preguntar si se podrá publicar, si existe un archivo en la lista que ya no está en la carpeta, entonces deberá eliminarse (Los mensajes de cambios de la lista deben enviarse a un log)
+- El archivo de configuración debe actualizarse cada vez que se inicie el proceso con los cambios en el sistema de archivos
+- El proceso debe crear otro hilo que inicie un socket que escuche en el puerto 50000 UDP.
+
+Entregar: código fuente y documentación.
+
+Opcional:
+El proceso debe recibir solicitudes acerca de si tiene disponible o no un archivo en específico, y devolver una respuesta ACK (si el archivo existe Y está disponible para compartirlo) o NACK. La estructura de las peticiones y las respuestas se deja opcional al estudiante.
