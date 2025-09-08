@@ -1,0 +1,4 @@
+Este es el contenido único del archivo 3.
+Línea de prueba A.
+Línea de prueba B.
+Fin del archivo.
