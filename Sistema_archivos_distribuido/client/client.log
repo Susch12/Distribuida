@@ -1,0 +1,55 @@
+{"Timestamp":"2025-09-16T10:37:45.929761004-06:00","Module":"CLIENT","Action":"CRITICAL_ERROR","Details":"No se pudo conectar al servidor: falla al cargar el par de claves: open server.crt: no such file or directory"}
+{"Timestamp":"2025-09-16T10:38:14.938617636-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T10:38:14.942834316-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 1 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:38:28.204466951-06:00","Module":"CLIENT","Action":"ADD_REQUEST","Details":"Solicitud para agregar archivo 'test.txt' enviada."}
+{"Timestamp":"2025-09-16T10:38:28.205062223-06:00","Module":"CLIENT","Action":"WRITE_ERROR","Details":"Falla al enviar mensaje: dtls fatal: conn is closed. Intentando reconectar..."}
+{"Timestamp":"2025-09-16T10:38:36.327292348-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T10:38:36.327805839-06:00","Module":"CLIENT","Action":"WRITE_ERROR","Details":"Falla al enviar mensaje: dtls fatal: conn is closed. Intentando reconectar..."}
+{"Timestamp":"2025-09-16T10:38:36.342721762-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:38:38.744861839-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T10:44:50.113992793-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:47:35.753923774-06:00","Module":"NETWORK_HANDLER","Action":"REQUEST_SENT","Details":"Enviando mensaje de tipo: GET_FULL_LIST"}
+{"Timestamp":"2025-09-16T10:47:35.759003681-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:47:43.839084555-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T10:47:49.910948094-06:00","Module":"NETWORK_HANDLER","Action":"REQUEST_SENT","Details":"Enviando mensaje de tipo: GET_FULL_LIST"}
+{"Timestamp":"2025-09-16T10:47:49.915310821-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:47:51.151506828-06:00","Module":"NETWORK_HANDLER","Action":"REQUEST_SENT","Details":"Enviando mensaje de tipo: GET_FULL_LIST"}
+{"Timestamp":"2025-09-16T10:47:51.151820272-06:00","Module":"NETWORK_HANDLER","Action":"WRITE_ERROR","Details":"Falla al enviar mensaje: dtls fatal: conn is closed. Reintentando..."}
+{"Timestamp":"2025-09-16T10:48:00.862063288-06:00","Module":"NETWORK_HANDLER","Action":"REQUEST_SENT","Details":"Enviando mensaje de tipo: ADD_FILE"}
+{"Timestamp":"2025-09-16T10:48:00.862450958-06:00","Module":"NETWORK_HANDLER","Action":"WRITE_ERROR","Details":"Falla al enviar mensaje: dtls fatal: conn is closed. Reintentando..."}
+{"Timestamp":"2025-09-16T10:49:46.349531023-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T10:49:52.504550998-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 1 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:49:57.334187999-06:00","Module":"NETWORK_HANDLER","Action":"WRITE_ERROR","Details":"Falla al enviar mensaje: dtls fatal: conn is closed. Reintentando..."}
+{"Timestamp":"2025-09-16T10:49:57.348885138-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T10:50:03.779765419-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 1 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:00:24.829371924-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T11:00:26.978586681-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:00:34.808455364-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 3 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:00:43.088108829-06:00","Module":"NETWORK_HANDLER","Action":"SHUTDOWN","Details":"Canal de solicitudes cerrado. Terminando."}{"Timestamp":"2025-09-16T11:00:43.087963347-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+
+{"Timestamp":"2025-09-16T11:04:54.751840008-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T11:05:07.848262811-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T11:07:34.214758556-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T11:07:36.5126663-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:07:48.513033818-06:00","Module":"CLIENT","Action":"UNEXPECTED_RESPONSE","Details":"Respuesta inesperada del servidor: FILE_RESPONSE"}
+{"Timestamp":"2025-09-16T11:08:09.789707669-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:08:27.972297654-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:08:40.028781061-06:00","Module":"CLIENT","Action":"ERROR","Details":"No se encontró la entrada del archivo en la caché local para la versión."}
+{"Timestamp":"2025-09-16T11:08:43.696986516-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T11:14:16.278884887-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T11:14:18.829725945-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:14:29.999997093-06:00","Module":"CLIENT","Action":"UNEXPECTED_RESPONSE","Details":"Respuesta inesperada del servidor: REDIRECT_OWNER"}
+{"Timestamp":"2025-09-16T11:15:18.465323883-06:00","Module":"CLIENT","Action":"ERROR","Details":"No se encontró la entrada del archivo en la caché local para la versión."}
+{"Timestamp":"2025-09-16T11:29:45.045254199-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T11:29:47.930351893-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:30:16.348001553-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 3 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:30:54.830757559-06:00","Module":"CLIENT","Action":"ERROR","Details":"Archivo no encontrado en la caché local. Intenta 'list' primero."}
+{"Timestamp":"2025-09-16T11:30:57.50924499-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T11:39:07.571917076-06:00","Module":"CLIENT","Action":"CONNECTION_FAILURE","Details":"Falla al conectar con localhost:8080: handshake error: dtls temporary: read udp 127.0.0.1:50295-\u003e127.0.0.1:8080: read: connection refused"}
+{"Timestamp":"2025-09-16T11:39:07.572101137-06:00","Module":"CLIENT","Action":"CRITICAL_ERROR","Details":"No se pudo iniciar el cliente: no se pudo conectar a ningún peer conocido"}
+{"Timestamp":"2025-09-16T18:06:45.841830066-06:00","Module":"CLIENT","Action":"CONNECTION_SUCCESS","Details":"Conectado con éxito a: localhost:8080"}
+{"Timestamp":"2025-09-16T18:06:50.133934018-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T18:06:57.880301783-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 3 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T18:08:27.420902877-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T18:09:02.618827896-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T18:09:28.729650895-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
