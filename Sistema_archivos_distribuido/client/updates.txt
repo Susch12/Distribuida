@@ -1,5 +1,0 @@
-Manejo de Errores Más Robusto: Mejorar el manejo de errores, por ejemplo, con reintentos exponenciales o la capacidad de buscar en otros peers si el servidor principal no responde.
-
-Concurrencia: Si bien el cliente actual es síncrono (procesa un comando a la vez), una versión más avanzada podría usar goroutines para realizar operaciones en segundo plano, como la descarga de archivos grandes, sin bloquear la interfaz.
-
-Lógica de Sincronización: Podrías implementar una lógica más avanzada para detectar si un archivo local ha sido modificado y sugerir una sincronización, en lugar de esperar un comando explícito de edit.
