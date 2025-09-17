@@ -1,0 +1,101 @@
+{"Timestamp":"2025-09-15T00:05:39.490347614-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-15T00:05:39.492675397-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-15T00:05:39.492912331-06:00","Module":"CLIENT","Action":"MESSAGE_SENT","Details":"Mensaje enviado: TEST"}
+{"Timestamp":"2025-09-15T00:05:39.493257989-06:00","Module":"CLIENT","Action":"MESSAGE_RECEIVED","Details":"De servidor, tipo: ACK, payload: Mensaje recibido, handshake exitoso."}
+{"Timestamp":"2025-09-15T00:12:02.116761463-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-15T00:12:02.119588218-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-15T00:12:02.119854933-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-15T00:12:03.120561179-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de información para 'test_file.txt' enviada."}
+{"Timestamp":"2025-09-15T00:12:03.121320861-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida."}
+{"Timestamp":"2025-09-15T00:12:03.121418754-06:00","Module":"CLIENT","Action":"LIST_ENTRY","Details":"Archivo: perpetual_file.doc, Tamaño: 456 bytes, TTL: 0"}
+{"Timestamp":"2025-09-15T00:12:03.121502559-06:00","Module":"CLIENT","Action":"LIST_ENTRY","Details":"Archivo: test_file.txt, Tamaño: 123 bytes, TTL: 60"}
+{"Timestamp":"2025-09-15T00:12:03.121631022-06:00","Module":"CLIENT","Action":"ERROR","Details":"Falla al recibir respuesta: EOF"}
+{"Timestamp":"2025-09-15T00:12:22.054725716-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-15T00:12:22.063801004-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-15T00:12:22.064736362-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-15T00:12:23.066570267-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de información para 'test_file.txt' enviada."}
+{"Timestamp":"2025-09-15T00:12:23.067660003-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida."}
+{"Timestamp":"2025-09-15T00:12:23.068028167-06:00","Module":"CLIENT","Action":"LIST_ENTRY","Details":"Archivo: perpetual_file.doc, Tamaño: 456 bytes, TTL: 0"}
+{"Timestamp":"2025-09-15T00:12:23.068158553-06:00","Module":"CLIENT","Action":"LIST_ENTRY","Details":"Archivo: test_file.txt, Tamaño: 123 bytes, TTL: 30"}
+{"Timestamp":"2025-09-15T00:12:23.068278663-06:00","Module":"CLIENT","Action":"ERROR","Details":"Falla al recibir respuesta: EOF"}
+{"Timestamp":"2025-09-16T00:25:58.676694139-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:25:58.682778801-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:25:58.683068175-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de info para 'new_file.txt' enviada."}
+{"Timestamp":"2025-09-16T00:25:58.683486932-06:00","Module":"CLIENT","Action":"RESPONSE_RECEIVED_NON_AUTH","Details":"Respuesta no autoritativa. Pidiendo copia al dueño en localhost:8081"}
+{"Timestamp":"2025-09-16T00:25:58.683985283-06:00","Module":"CLIENT","Action":"ERROR","Details":"Falla al conectar con el dueño: handshake error: dtls temporary: read udp 127.0.0.1:56900-\u003e127.0.0.1:8081: read: connection refused"}
+{"Timestamp":"2025-09-16T00:26:08.549866412-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:26:08.559783707-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:26:08.560816877-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de info para 'new_file.txt' enviada."}
+{"Timestamp":"2025-09-16T00:26:08.56202922-06:00","Module":"CLIENT","Action":"RESPONSE_RECEIVED_NON_AUTH","Details":"Respuesta no autoritativa. Pidiendo copia al dueño en localhost:8081"}
+{"Timestamp":"2025-09-16T00:26:08.563955309-06:00","Module":"CLIENT","Action":"ERROR","Details":"Falla al conectar con el dueño: handshake error: dtls temporary: read udp 127.0.0.1:44194-\u003e127.0.0.1:8081: read: connection refused"}
+{"Timestamp":"2025-09-16T00:33:23.363029076-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:33:23.36654012-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:33:26.484434235-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:33:26.487397571-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida."}
+{"Timestamp":"2025-09-16T00:33:42.479102004-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:34:37.328219518-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:34:43.201580121-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:34:55.000934609-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de info para 'test_file.txt' enviada."}
+{"Timestamp":"2025-09-16T00:46:55.766189838-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:46:55.777305383-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:46:59.424992169-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:47:13.512562199-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:47:20.915549891-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:47:24.360751216-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:47:24.363184331-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:47:27.006270275-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:53:05.465971168-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T00:53:09.638708632-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:53:09.640653826-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:53:14.708795712-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:53:34.633208383-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:53:39.025983398-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:53:45.775033145-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T00:53:47.881672968-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T00:53:47.884889308-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T00:53:51.90544201-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T00:54:23.846940499-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T01:12:41.630077873-06:00","Module":"CLIENT","Action":"HANDSHAKE_STARTED","Details":"Iniciando handshake DTLS..."}
+{"Timestamp":"2025-09-16T01:12:41.632910024-06:00","Module":"CLIENT","Action":"HANDSHAKE_COMPLETED","Details":"Handshake DTLS completado y certificado validado."}
+{"Timestamp":"2025-09-16T01:12:44.859140116-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T01:12:44.86372302-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T01:33:37.301783487-06:00","Module":"CLIENT","Action":"RECONNECT_ATTEMPT","Details":"Intentando reconectar a localhost:8080..."}
+{"Timestamp":"2025-09-16T01:33:37.303061412-06:00","Module":"CLIENT","Action":"RECONNECT_SUCCESS","Details":"Reconexión exitosa a localhost:8080"}
+{"Timestamp":"2025-09-16T01:33:39.394600112-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T01:33:39.399172402-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T01:33:59.37100718-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de info para 'perpetual_file.doc' enviada."}
+{"Timestamp":"2025-09-16T01:33:59.371381078-06:00","Module":"CLIENT","Action":"WRITE_ERROR","Details":"Falla al enviar mensaje: dtls fatal: conn is closed. Intentando reconectar..."}
+{"Timestamp":"2025-09-16T01:33:59.371964178-06:00","Module":"CLIENT","Action":"RECONNECT_ATTEMPT","Details":"Intentando reconectar a localhost:8080..."}
+{"Timestamp":"2025-09-16T01:33:59.379717634-06:00","Module":"CLIENT","Action":"RECONNECT_SUCCESS","Details":"Reconexión exitosa a localhost:8080"}
+{"Timestamp":"2025-09-16T01:33:59.381533577-06:00","Module":"CLIENT","Action":"RESPONSE_RECEIVED","Details":"Información recibida para 'perpetual_file.doc'. (Autoritativa: true)"}
+{"Timestamp":"2025-09-16T01:34:02.112699654-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T01:52:18.154706936-06:00","Module":"CLIENT","Action":"RECONNECT_ATTEMPT","Details":"Intentando reconectar a localhost:8080..."}
+{"Timestamp":"2025-09-16T01:52:18.156748832-06:00","Module":"CLIENT","Action":"RECONNECT_SUCCESS","Details":"Reconexión exitosa a localhost:8080"}
+{"Timestamp":"2025-09-16T01:52:20.517781822-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T01:52:20.522258355-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T01:52:35.460808289-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T02:00:37.028223776-06:00","Module":"CLIENT","Action":"RECONNECT_ATTEMPT","Details":"Intentando reconectar a localhost:8080..."}
+{"Timestamp":"2025-09-16T02:00:37.030644202-06:00","Module":"CLIENT","Action":"RECONNECT_SUCCESS","Details":"Reconexión exitosa a localhost:8080"}
+{"Timestamp":"2025-09-16T02:00:39.094866681-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T02:00:39.098453077-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T02:00:45.990994355-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T02:25:14.207888405-06:00","Module":"CLIENT","Action":"RECONNECT_ATTEMPT","Details":"Intentando reconectar a localhost:8080..."}
+{"Timestamp":"2025-09-16T02:25:14.209896612-06:00","Module":"CLIENT","Action":"RECONNECT_SUCCESS","Details":"Reconexión exitosa a localhost:8080"}
+{"Timestamp":"2025-09-16T02:25:21.142605596-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T02:25:21.14763949-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T02:25:23.333242455-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T02:28:39.915504275-06:00","Module":"CLIENT","Action":"RECONNECT_ATTEMPT","Details":"Intentando reconectar a localhost:8080..."}
+{"Timestamp":"2025-09-16T02:28:39.917545522-06:00","Module":"CLIENT","Action":"RECONNECT_SUCCESS","Details":"Reconexión exitosa a localhost:8080"}
+{"Timestamp":"2025-09-16T02:29:44.849192959-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}
+{"Timestamp":"2025-09-16T03:38:08.320435053-06:00","Module":"CLIENT","Action":"ERROR","Details":"Error de conexión: falla al cargar el par de claves: open client.crt: no such file or directory"}
+{"Timestamp":"2025-09-16T03:39:36.718739398-06:00","Module":"CLIENT","Action":"LIST_RECEIVED","Details":"Lista de archivos recibida:"}
+{"Timestamp":"2025-09-16T03:40:43.422242187-06:00","Module":"CLIENT","Action":"CRITICAL_ERROR","Details":"No se pudo conectar a ningún servidor: no se puede leer el archivo de certificado: open cert.pem: no such file or directory"}
+{"Timestamp":"2025-09-16T03:42:28.420940251-06:00","Module":"CLIENT","Action":"LIST_RECEIVED","Details":"Lista de archivos recibida:"}
+{"Timestamp":"2025-09-16T10:13:35.390824143-06:00","Module":"CLIENT","Action":"ERROR","Details":"Error de conexión: falla al cargar el par de claves: open client.crt: no such file or directory"}
+{"Timestamp":"2025-09-16T10:14:55.387117152-06:00","Module":"CLIENT","Action":"LIST_RECEIVED","Details":"Lista de archivos recibida:"}
+{"Timestamp":"2025-09-16T10:17:41.460634078-06:00","Module":"CLIENT","Action":"ERROR","Details":"Error de conexión: falla al cargar el par de claves: open client.crt: no such file or directory"}
+{"Timestamp":"2025-09-16T10:18:08.088947465-06:00","Module":"CLIENT","Action":"ERROR","Details":"Error de conexión: falla al cargar el par de claves: open sever.crt: no such file or directory"}
+{"Timestamp":"2025-09-16T10:18:26.358034422-06:00","Module":"CLIENT","Action":"LIST_RECEIVED","Details":"Lista de archivos recibida:"}
+{"Timestamp":"2025-09-16T10:29:52.421451545-06:00","Module":"CLIENT","Action":"REQUEST_SENT","Details":"Solicitud de lista completa enviada."}
+{"Timestamp":"2025-09-16T10:29:52.425090709-06:00","Module":"CLIENT","Action":"RESPONSE_LIST_RECEIVED","Details":"Lista de 2 archivos recibida y guardada localmente."}
+{"Timestamp":"2025-09-16T10:29:54.398491103-06:00","Module":"CLIENT","Action":"EXIT","Details":"Cerrando cliente."}

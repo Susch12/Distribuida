@@ -1,0 +1,103 @@
+1. Toma de Decisiones con Respuestas no Autoritativas
+
+Actualmente, tu cliente solo pregunta al primer servidor en su lista knownServers. Si ese servidor no tiene el archivo, la operación falla. Para manejar respuestas no autoritativas, el cliente debe implementar una lógica de consulta en cascada o iterativa.
+
+Cambios en el Cliente:
+
+    Gestión de Servidores: El cliente necesita una forma de iterar a través de la lista de servidores conocidos para encontrar una respuesta autoritativa.
+
+    Lógica de Reintento: Cuando el cliente recibe una respuesta no autoritativa (por ejemplo, NACK o una respuesta que le indica la IP del dueño), debe solicitar la misma información a otro servidor.
+
+    Manejo del OWNER_RESPONSE: Debes agregar un nuevo tipo de mensaje de respuesta, como OWNER_RESPONSE, que el servidor envíe cuando no es el dueño, pero conoce al propietario del archivo. Este mensaje debe contener la IP del dueño.
+
+    Actualización de main: El bucle principal del cliente debe ser capaz de manejar esta lógica de forma secuencial.
+
+Go
+
+// Nuevo tipo de mensaje para la respuesta no autoritativa
+// que indica la IP del dueño.
+type OwnerResponsePayload struct {
+    FileName string
+    OwnerIP  string
+}
+
+// Lógica de consulta en el cliente
+func getFileInfo(conn *dtls.Conn, fileName string) (DirectoryEntry, error) {
+    // 1. Preguntar a un servidor.
+    payloadBytes, _ := json.Marshal(fileName)
+    msg := NetworkMessage{Type: "GET_FILE_INFO", Payload: payloadBytes}
+    responseMsg, err := sendMessage(conn, msg)
+    if err != nil {
+        return DirectoryEntry{}, err
+    }
+
+    // 2. Manejar la respuesta
+    switch responseMsg.Type {
+    case "RESPONSE": // Respuesta autoritativa
+        var entry DirectoryEntry
+        json.Unmarshal(responseMsg.Payload, &entry)
+        return entry, nil
+    case "NACK": // El servidor no conoce el archivo.
+        return DirectoryEntry{}, fmt.Errorf("Servidor NACK: Archivo no conocido.")
+    case "OWNER_RESPONSE": // Respuesta no autoritativa
+        var ownerInfo OwnerResponsePayload
+        json.Unmarshal(responseMsg.Payload, &ownerInfo)
+        // 3. Conectar al nuevo dueño para obtener la información autoritativa.
+        // Aquí necesitarías una función para conectar a la nueva IP
+        // y repetir la solicitud.
+        // Esto podría ser un loop hasta que se reciba una respuesta autoritativa o se acaben los servidores.
+        return DirectoryEntry{}, fmt.Errorf("Redirigiendo a dueño: %s", ownerInfo.OwnerIP)
+    default:
+        return DirectoryEntry{}, fmt.Errorf("Respuesta inesperada.")
+    }
+}
+
+2. Manejo de TTL (En el Servidor)
+
+El requisito del TTL no es visible en el cliente porque es una funcionalidad interna del servidor para gestionar la frescura de los datos.
+
+Cambios en el Servidor:
+
+    Estructura de Datos: La entrada del directorio (DirectoryEntry) debe incluir un campo TTL (Time-to-Live).
+
+    Hilo de Verificación: Debes crear un goroutine en el servidor que se ejecute periódicamente para revisar los TTLs de cada entrada.
+
+    Lógica de Verificación: Este hilo debe:
+
+        Para registros con TTL > 0, enviar una solicitud de verificación al dueño del archivo.
+
+        Si el dueño responde afirmativamente, el servidor actualiza el TTL.
+
+        Si el dueño no responde o el registro no es válido, el servidor debe preguntar a los otros servidores de nombres. Si todos los demás confirman que el registro ya no es válido, se debe eliminar de la lista.
+
+        Si un registro tiene TTL = 0, el servidor lo considerará siempre disponible y no lo verificará.
+
+3. Política de Repositorio y "Unit of Work"
+
+Este es el cambio más complejo, ya que implica que los servidores no solo redireccionen a los clientes, sino que también actúen como intermediarios.
+
+Cambios en el Servidor:
+
+    Solicitud de Copia: Cuando un cliente solicita un archivo que no es local, el servidor que recibe la petición debe iniciar un "unit of work".
+
+    Lógica del Servidor Intermediario: El servidor que recibe la petición:
+
+        Envía un mensaje de REQUEST_FILE al servidor dueño.
+
+        Recibe el archivo del dueño.
+
+        Guarda una copia temporal (temp_file) en su propio sistema.
+
+        Responde al cliente con el contenido del archivo temporal.
+
+    Sincronización: Una vez que el cliente termina de editar y envía los cambios, estos no deben ir al primer servidor, sino al servidor que le dio la copia. Este servidor intermediario debe:
+
+        Recibir los cambios del cliente.
+
+        Enviar un mensaje de FILE_WRITE_UPDATE al servidor dueño, incluyendo un commit o diff de los cambios y la marca de tiempo original para la resolución de conflictos.
+
+        El dueño del archivo original compara la marca de tiempo de la solicitud con la suya. Si la versión es la misma, acepta los cambios. Si no, resuelve el conflicto.
+
+        El servidor intermediario elimina su copia local después de sincronizar los cambios.
+
+    Seguimiento de Conflictos: El servidor dueño del archivo debe mantener un registro de las copias en uso para identificar posibles conflictos de edición.

@@ -1,0 +1,19 @@
+Validación de Datos Estricta
+
+Actualmente, tus códigos confían en que los datos JSON recibidos son correctos. Sin embargo, un atacante o un error en un cliente podría enviar un mensaje con formato incorrecto, lo que causaría que tu servidor colapse.
+
+Recomendación: Añade validación de datos en el servidor y el cliente. Por ejemplo:
+
+    Comprueba el formato JSON: Usa un if err := json.Unmarshal(...) y maneja los errores.
+
+    Valida los campos: Asegúrate de que los campos críticos (Type, Payload) no estén vacíos.
+
+    Límites de tamaño: Implementa un límite en el tamaño del buffer (2048 bytes es un buen inicio) y asegúrate de que el mensaje entrante no lo exceda.
+
+Esto protege tu aplicación de datos maliciosos o corruptos y previene posibles vulnerabilidades.
+
+Gossip Descentralizado (Descubrimiento de Pares)
+
+El modelo actual con una lista de knownPeers codificada es una forma de gossip centralizado, ya que todos los clientes dependen de esta lista estática. Esto no escala. Si añades o quitas un servidor, todos los clientes deben ser actualizados.
+
+Recomendación: Permite que los clientes descubran nuevos pares. Esto se puede lograr de varias maneras:

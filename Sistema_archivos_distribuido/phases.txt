@@ -1,0 +1,80 @@
+Para cumplir con el plazo de dos días, el proyecto debe ser altamente modular y las tareas deben ejecutarse de manera eficiente. Aquí tienes un plan de 5 fases, con tareas específicas y tiempos aproximados.
+
+## Fase 1: Fundamentos y Comunicación (Aprox. 8 horas)
+
+Esta fase se centra en establecer el esqueleto de la aplicación, definiendo las estructuras de datos y el protocolo de comunicación.
+
+* **Tareas Específicas:**
+    1.  **Definir Estructuras de Datos:** Escribir los structs en Go para `DirectoryEntry` y `NetworkMessage`.
+    2.  **Implementar Servidor Base:** Crear la base de `server.go` con un oyente DTLS, el manejo de múltiples clientes en goroutines y la gestión de certificados PEM.
+    3.  **Implementar Cliente Base:** Crear la base de `client.go` con la lógica de conexión DTLS, la validación de certificados y la capacidad de enviar y recibir mensajes.
+    4.  **Configurar Logging:** Escribir la función de logging estructurado que será utilizada por todos los módulos.
+* **Fase de Prueba (Prueba de Conectividad):**
+    * Ejecutar `server.go` y `client.go` en la misma máquina y en dos máquinas diferentes.
+    * Verificar que el *handshake* DTLS se complete con éxito y que ambos lados puedan intercambiar un mensaje simple de prueba.
+    * Revisar los logs para confirmar que los eventos de conexión se registran correctamente.
+
+***
+
+## Fase 2: Lógica de Directorio (Aprox. 8 horas)
+
+Se implementará el corazón del servicio de directorio distribuido: la lista de archivos y su gestión.
+
+* **Tareas Específicas:**
+    1.  **Directorio Dinámico:** Implementar un mapa en el servidor (`map[string]DirectoryEntry`) para almacenar los archivos compartidos.
+    2.  **Mecanismo de TTL:** Crear un hilo (`go cleaner()`) que itere sobre la lista de archivos. Por ahora, solo debe eliminar las entradas con TTL > 0 que han expirado.
+    3.  **Manejo de Peticiones:** Añadir la lógica al servidor para responder a las peticiones de los clientes:
+        * **Solicitud de un archivo específico:** Devolver la entrada completa (autoritativo), solo la IP del dueño (no autoritativo), o `NACK`.
+        * **Solicitud de la lista completa:** Devolver la lista completa de entradas del directorio.
+* **Fase de Prueba (Prueba de Funcionalidad):**
+    * Usar el cliente para solicitar un archivo que el servidor posee, otro que no posee y uno que no existe.
+    * Verificar que las respuestas (`autoritativa`, `no autoritativa`, `NACK`) sean correctas.
+    * Simular el vencimiento de un TTL y verificar que el archivo se elimine de la lista del servidor y se registre en el log.
+
+***
+
+## Fase 3: Sincronización y Acceso (Aprox. 8 horas)
+
+Esta es la fase más compleja, centrada en la gestión de copias y la resolución de conflictos.
+
+* **Tareas Específicas:**
+    1.  **Política de Repositorio:** En el servidor, implementar la lógica para que al recibir una petición de uso de un archivo que no posee, solicite una copia al propietario usando el protocolo DTLS.
+    2.  **`Unit of Work`:** Implementar el patrón para bloquear el archivo localmente durante la edición. Esto puede ser un simple *flag* (`is_locked`).
+    3.  **Sincronización:** Al terminar el uso, calcular un `checksum` o usar marcas de tiempo para detectar cambios. Implementar la lógica para enviar la nueva versión al dueño.
+    4.  **Resolución de Colisiones:** En el servidor propietario, escribir la lógica para comparar marcas de tiempo y resolver conflictos.
+* **Fase de Prueba (Prueba de Sincronización):**
+    * Ejecutar dos servidores. En el servidor B, crear un archivo y publicarlo.
+    * Usar un cliente para solicitar el archivo al servidor A. El servidor A deberá obtener una copia del servidor B.
+    * Modificar el archivo desde el cliente y cerrar la sesión.
+    * Verificar que el servidor A sincronice los cambios con el servidor B. 
+    * Simular una colisión: modificar el archivo en el servidor B y en el cliente, luego intentar sincronizar para ver si la lógica de resolución de conflictos funciona.
+
+***
+
+## Fase 4: Herramientas de Visualización y Cliente Final (Aprox. 8 horas)
+
+Se construirá la capa de interacción para el usuario y las herramientas de diagnóstico.
+
+* **Tareas Específicas:**
+    1.  **Interfaz de Cliente:** Ampliar `client.go` para permitir al usuario ver la lista de archivos, seleccionar uno para visualizar y editar.
+    2.  **`log_tool`:** Crear un script de Go (`log_tool.go`) que lea todos los archivos de log (`server.log`, `client.log`).
+    3.  **Análisis de Logs:** Implementar la lógica en `log_tool` para filtrar logs por módulo o acción, y para rastrear una operación completa (por ejemplo, buscar todas las entradas de log relacionadas con la edición de un archivo específico).
+* **Fase de Prueba (Prueba de Usuario):**
+    * Lanzar múltiples servidores y un cliente.
+    * Desde el cliente, visualizar la lista de archivos, seleccionar uno de un servidor remoto, editarlo y guardar los cambios.
+    * Usar la herramienta de logs para rastrear cada paso de la operación, desde la solicitud del cliente hasta la sincronización del archivo.
+
+***
+
+## Fase 5: Refinamiento y Pruebas Finales (Aprox. 8 horas)
+
+Última fase para pulir el código, asegurar la estabilidad y preparar el proyecto para su entrega.
+
+* **Tareas Específicas:**
+    1.  **Refinamiento de Código:** Añadir comentarios a todas las funciones, organizar el código y asegurar que los nombres de variables sean claros.
+    2.  **Gestión de Errores:** Mejorar el manejo de errores para que la aplicación no entre en `panic` con errores inesperados.
+    3.  **Documentación:** Escribir un archivo `README.md` con las instrucciones de instalación, cómo ejecutar los servidores y clientes, y cómo usar la herramienta de logs.
+* **Fase de Prueba (Prueba Integral):**
+    * Realizar una prueba de estrés con múltiples clientes y servidores activos simultáneamente.
+    * Apagar un servidor de nombres aleatoriamente para verificar que el sistema sigue funcionando y que el `cleaner` finalmente elimina el registro del nodo caído.
+    * Verificar que todos los logs se estén escribiendo correctamente y que la herramienta de logs pueda analizarlos sin errores.
