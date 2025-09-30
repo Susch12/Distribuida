@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -19,35 +18,16 @@ import (
 	"github.com/pion/dtls/v2"
 )
 
-type DirectoryEntry struct {
-	FileName         string    `json:"file_name"`
-	Size             int64     `json:"size"`
-	ModificationDate time.Time `json:"modification_date"`
-	Version          int       `json:"version"`
-	TTL              int       `json:"ttl"`
-	OwnerIP          string    `json:"owner_ip"`
-}
-
-type FileUpdate struct {
-	FileName         string    `json:"file_name"`
-	Content          []byte    `json:"content"`
-	ModificationDate time.Time `json:"modification_date"`
-	Version          int       `json:"version"`
-}
-
-type NetworkMessage struct {
-	Type          string          `json:"type"`
-	Payload       json.RawMessage `json:"payload,omitempty"`
-	Authoritative bool            `json:"authoritative"`
-	SenderIP      string          `json:"sender_ip"`
-}
-
 type logEntry struct {
 	Timestamp time.Time
 	Module    string
 	Action    string
 	Details   string
 }
+
+// =============================================================================
+// Funciones de Conexión y Red (Adaptadas del código unificado)
+// =============================================================================
 
 func logEvent(module, action, details string) {
 	entry := logEntry{
@@ -73,10 +53,9 @@ func logEvent(module, action, details string) {
 }
 
 var (
-	knownServers   = []string{"localhost:8080", "localhost:8081"}
+	knownServers   = []string{"192.168.100.136:8080"} // Lista de servidores a los que intentará conectarse
 	localDirectory = make(map[string]DirectoryEntry)
-	mu             sync.Mutex
-	currentConn    *dtls.Conn
+	mu             sync.Mutex // Mutex para proteger localDirectory
 )
 
 func getDTLSConfig() (*dtls.Config, error) {
@@ -106,10 +85,6 @@ func connectToPeer() (*dtls.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(knownServers), func(i, j int) { knownServers[i], knownServers[j] = knownServers[j], knownServers[i] })
-	
 	for _, addr := range knownServers {
 		udpAddr, err := net.ResolveUDPAddr("udp", addr)
 		if err != nil {
@@ -146,6 +121,22 @@ func sendMessage(conn *dtls.Conn, msg NetworkMessage) (NetworkMessage, error) {
 		return NetworkMessage{}, fmt.Errorf("fallo al deserializar la respuesta: %v", err)
 	}
 	return responseMsg, nil
+}
+
+// =============================================================================
+// Lógica de Comandos y UI
+// =============================================================================
+
+func getEditor() string {
+	editor := os.Getenv("EDITOR")
+	if editor != "" {
+		return editor
+	}
+
+	if runtime.GOOS == "windows" {
+		return "notepad.exe"
+	}
+	return "nano"
 }
 
 func printMenu() {
@@ -209,26 +200,32 @@ func processResponse(responseMsg NetworkMessage) {
 	}
 }
 
-func main() {
-	requests := make(chan NetworkMessage)
-	responses := make(chan NetworkMessage, 100)
+// executeAndProcess se encarga de enviar el mensaje, manejar el reintento y procesar la respuesta.
+func executeAndProcess(conn *dtls.Conn, msg NetworkMessage) {
+	responseMsg, err := sendMessage(conn, msg)
+	if err != nil {
+		logEvent("CLIENT", "NETWORK_ERROR", fmt.Sprintf("Falla al ejecutar comando: %v", err))
+		// Lógica de reconexión simplificada (el main se encarga de reconectar)
+		return
+	}
+	processResponse(responseMsg)
+}
 
-	go networkHandler(requests, responses)
+func main() {
+	var currentConn *dtls.Conn
+	
+	// Intenta la conexión inicial.
+	conn, err := connectToPeer()
+	if err != nil {
+		logEvent("CLIENT", "CRITICAL_ERROR", fmt.Sprintf("No se pudo iniciar el cliente: %v", err))
+		return
+	}
+	currentConn = conn
+	defer currentConn.Close()
 
 	reader := bufio.NewReader(os.Stdin)
-
 	fmt.Println("Cliente de Directorio Distribuido - Modo CLI")
 	printMenu()
-
-	go func() {
-		for {
-			response, ok := <-responses
-			if !ok {
-				return
-			}
-			processResponse(response)
-		}
-	}()
 
 	for {
 		input, _ := reader.ReadString('\n')
@@ -236,16 +233,18 @@ func main() {
 		parts := strings.SplitN(input, " ", 2)
 		command := parts[0]
 
-		var msg NetworkMessage
 		var fileName string
 		if len(parts) >= 2 {
 			fileName = parts[1]
 		}
-		
+
+		var msg NetworkMessage
+
 		switch command {
 		case "list":
-			msg = NetworkMessage{Type: "GET_FULL_LIST", Payload: []byte{}}
-			requests <- msg
+			msg = NetworkMessage{Type: "GET_FULL_LIST"}
+			executeAndProcess(currentConn, msg)
+		
 		case "get":
 			if len(parts) < 2 {
 				fmt.Println("Uso: get <nombre_archivo>")
@@ -254,7 +253,8 @@ func main() {
 			}
 			fileNameBytes, _ := json.Marshal(fileName)
 			msg = NetworkMessage{Type: "GET_FILE_INFO", Payload: fileNameBytes}
-			requests <- msg
+			executeAndProcess(currentConn, msg)
+
 		case "add":
 			if len(parts) < 2 {
 				fmt.Println("Uso: add <nombre_archivo>")
@@ -263,7 +263,8 @@ func main() {
 			}
 			fileNameBytes, _ := json.Marshal(fileName)
 			msg = NetworkMessage{Type: "ADD_FILE", Payload: fileNameBytes}
-			requests <- msg
+			executeAndProcess(currentConn, msg)
+			
 		case "view":
 			if len(parts) < 2 {
 				fmt.Println("Uso: view <nombre_archivo>")
@@ -272,20 +273,20 @@ func main() {
 			}
 			fileNameBytes, _ := json.Marshal(fileName)
 			msg = NetworkMessage{Type: "REQUEST_FILE", Payload: fileNameBytes}
-			requests <- msg
+			executeAndProcess(currentConn, msg)
+
 		case "edit":
 			if len(parts) < 2 {
 				fmt.Println("Uso: edit <nombre_archivo>")
 				printMenu()
 				continue
 			}
-			// La lógica de 'edit' es secuencial, por lo que la manejamos aquí mismo
-			go handleEditCommand(fileName, requests, responses)
-
+			handleEditFlow(currentConn, fileName, reader)
+			
 		case "exit":
-			close(requests)
 			logEvent("CLIENT", "EXIT", "Cerrando cliente.")
 			return
+
 		default:
 			fmt.Println("Comando no reconocido.")
 			printMenu()
@@ -293,79 +294,80 @@ func main() {
 	}
 }
 
-func handleEditCommand(fileName string, requests chan<- NetworkMessage, responses <-chan NetworkMessage) {
-	// Primero, obtener la información del archivo para saber su versión
+// handleEditFlow gestiona la secuencia de pasos para la edición de archivos.
+func handleEditFlow(conn *dtls.Conn, fileName string, reader *bufio.Reader) {
+	// 1. OBTENER INFORMACIÓN DE VERSIÓN (usando GET_FILE_INFO)
 	fileNameBytes, _ := json.Marshal(fileName)
-	requestInfoMsg := NetworkMessage{Type: "GET_FILE_INFO", Payload: fileNameBytes}
-	requests <- requestInfoMsg
-	
-	infoResponse := <-responses
-	if infoResponse.Type != "RESPONSE" {
-		fmt.Println("Error: No se pudo obtener la información del archivo para edición.")
+	infoMsg := NetworkMessage{Type: "GET_FILE_INFO", Payload: fileNameBytes}
+	infoResponse, err := sendMessage(conn, infoMsg)
+	if err != nil || infoResponse.Type != "RESPONSE" {
+		fmt.Println("❌ Error al obtener información del archivo para edición. Intente LIST primero.")
 		return
 	}
-	
 	var entry DirectoryEntry
 	json.Unmarshal(infoResponse.Payload, &entry)
-	
-	// Ahora, obtener el contenido del archivo
+
+	// 2. OBTENER CONTENIDO DEL ARCHIVO (usando REQUEST_FILE)
 	requestFileMsg := NetworkMessage{Type: "REQUEST_FILE", Payload: fileNameBytes}
-	requests <- requestFileMsg
-	
-	fileResponse := <-responses
-	if fileResponse.Type != "FILE_RESPONSE" {
-		fmt.Println("Error: No se pudo obtener el contenido del archivo para edición.")
+	fileResponse, err := sendMessage(conn, requestFileMsg)
+	if err != nil || fileResponse.Type != "FILE_RESPONSE" {
+		fmt.Println("❌ Error al descargar el contenido del archivo.")
 		return
 	}
 	
-	// Guardar el archivo temporalmente
+	// 3. UNIT OF WORK: Guardar, Editar y Leer.
 	tempFile := "edit_" + fileName
-	err := os.WriteFile(tempFile, fileResponse.Payload, 0644)
-	if err != nil {
+	if err := os.WriteFile(tempFile, fileResponse.Payload, 0644); err != nil {
 		logEvent("CLIENT", "FILE_ERROR", fmt.Sprintf("Falla al guardar archivo temporal: %v", err))
 		return
 	}
-	defer os.Remove(tempFile)
-
+	
 	fmt.Printf("Archivo descargado y guardado como '%s'.\n", tempFile)
-	fmt.Printf("Por favor, edita el archivo y presiona Enter para subir los cambios.\n")
-	bufio.NewReader(os.Stdin).ReadString('\n')
+	fmt.Printf(">>> Por favor, edita el archivo y presiona Enter para subir los cambios. <<<\n")
 
-	modifiedContent, err := os.ReadFile(tempFile)
-	if err != nil {
-		logEvent("CLIENT", "FILE_ERROR", fmt.Sprintf("Falla al leer el archivo modificado: %v", err))
+	// Ejecutar editor externo
+	editor := getEditor()
+	cmd := exec.Command(editor, tempFile)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	
+	if err := cmd.Run(); err != nil {
+		logEvent("CLIENT", "EDITOR_ERROR", fmt.Sprintf("Error al ejecutar el editor: %v", err))
+		os.Remove(tempFile)
 		return
 	}
 	
-	// Preparar el mensaje de actualización
+	modifiedContent, err := os.ReadFile(tempFile)
+	if err != nil {
+		logEvent("CLIENT", "FILE_ERROR", fmt.Sprintf("Falla al leer el archivo modificado: %v", err))
+		os.Remove(tempFile)
+		return
+	}
+	
+	// 4. SINCRONIZACIÓN
 	fileUpdate := FileUpdate{
 		FileName:         fileName,
 		Content:          modifiedContent,
 		ModificationDate: time.Now(),
-		Version:          entry.Version, // Usar la versión original para el control de concurrencia
+		Version:          entry.Version, // Usar la versión original para la resolución de conflictos
 	}
 	payloadBytes, _ := json.Marshal(fileUpdate)
-	msg := NetworkMessage{Type: "FILE_WRITE_UPDATE", Payload: payloadBytes}
-	requests <- msg
+	updateMsg := NetworkMessage{Type: "FILE_WRITE_UPDATE", Payload: payloadBytes}
+	updateResponse, err := sendMessage(conn, updateMsg)
 	
-	// Esperar la respuesta de la actualización
-	updateResponse := <-responses
+	// 5. CLEANUP
+	os.Remove(tempFile)
 	
-	if updateResponse.Type == "UPDATE_ACK" {
+	if err != nil {
+		logEvent("CLIENT", "NETWORK_ERROR", fmt.Sprintf("Falla al sincronizar: %v", err))
+	} else if updateResponse.Type == "UPDATE_ACK" {
 		fmt.Println("✅ Servidor:", string(updateResponse.Payload))
+		// Opcional: Solicitar info actualizada para reflejar la Versión+1 en la caché
+		infoUpdateMsg := NetworkMessage{Type: "GET_FILE_INFO", Payload: fileNameBytes}
+		infoUpdateResponse, _ := sendMessage(conn, infoUpdateMsg)
+		processResponse(infoUpdateResponse)
 	} else {
 		fmt.Println("❌ Servidor:", string(updateResponse.Payload))
 	}
-}
-
-func getEditor() string {
-	editor := os.Getenv("EDITOR")
-	if editor != "" {
-		return editor
-	}
-
-	if runtime.GOOS == "windows" {
-		return "notepad.exe"
-	}
-	return "nano"
 }
