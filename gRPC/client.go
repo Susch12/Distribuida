@@ -16,8 +16,17 @@ import (
 )
 
 func main() {
+	// Obtener dirección del servidor (por defecto localhost:50051)
+	serverAddr := "localhost:50051"
+	if len(os.Args) > 1 {
+		serverAddr = os.Args[1]
+	} else if addr := os.Getenv("SERVER_ADDR"); addr != "" {
+		serverAddr = addr
+	}
+
 	// Conectar al servidor
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	fmt.Printf("Conectando a %s...\n", serverAddr)
+	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("No se pudo conectar: %v", err)
 	}
@@ -30,6 +39,7 @@ func main() {
 	fmt.Println("╔════════════════════════════════════════════════════════════╗")
 	fmt.Println("║         Calculadora gRPC Interactiva                      ║")
 	fmt.Println("╚════════════════════════════════════════════════════════════╝")
+	fmt.Printf("Conectado a: %s\n", serverAddr)
 	fmt.Println()
 	fmt.Println("Operadores soportados: +, -, *, /, ^")
 	fmt.Println("Formato: numero operador numero [operador numero]*")
@@ -55,7 +65,7 @@ func main() {
 		// Manejar comandos especiales
 		switch strings.ToLower(input) {
 		case "salir", "exit", "quit":
-			fmt.Println("\n¡Hasta luego! 👋")
+			fmt.Println("\n¡Hasta luego! ")
 			return
 		case "ayuda", "help":
 			showHelp()
@@ -70,7 +80,7 @@ func main() {
 		// Parsear y evaluar la expresión
 		expr, err := parseExpression(input)
 		if err != nil {
-			fmt.Printf("❌ Error al parsear: %v\n\n", err)
+			fmt.Printf("[!] Error al parsear: %v\n\n", err)
 			continue
 		}
 
@@ -80,12 +90,12 @@ func main() {
 		cancel()
 
 		if err != nil {
-			fmt.Printf("❌ Error de servidor: %v\n\n", err)
+			fmt.Printf("[!] Error de servidor: %v\n\n", err)
 		} else {
 			if result.Success {
-				fmt.Printf("✅ Resultado: %g\n\n", result.Value)
+				fmt.Printf("[+] Resultado: %g\n\n", result.Value)
 			} else {
-				fmt.Printf("❌ Error: %s\n\n", result.Error)
+				fmt.Printf("[!] Error: %s\n\n", result.Error)
 			}
 		}
 	}
@@ -263,12 +273,12 @@ func runExamples(client pb.CalculatorClient) {
 		cancel()
 
 		if err != nil {
-			fmt.Printf("  ❌ Error de servidor: %v\n", err)
+			fmt.Printf("  [!] Error de servidor: %v\n", err)
 		} else {
 			if result.Success {
-				fmt.Printf("  ✅ Resultado: %g\n", result.Value)
+				fmt.Printf("  [+] Resultado: %g\n", result.Value)
 			} else {
-				fmt.Printf("  ❌ Error: %s\n", result.Error)
+				fmt.Printf("  [!] Error: %s\n", result.Error)
 			}
 		}
 		fmt.Println()
@@ -277,3 +287,4 @@ func runExamples(client pb.CalculatorClient) {
 	fmt.Println("────────────────────────────────────────────────────────────")
 	fmt.Println()
 }
+
