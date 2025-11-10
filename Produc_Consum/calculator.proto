@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package calculator;
+
+option go_package = "calculator/proto";
+
+// Servicio de calculadora
+service Calculator {
+  // Función única pública que evalúa expresiones matemáticas
+  rpc Evaluate(Expression) returns (Result);
+}
+
+// Mensaje para representar un operando y operación
+message Operation {
+  string operator = 1;  // +, -, *, /, ^
+  double number = 2;
+}
+
+// Mensaje de entrada con el primer número y operaciones repetidas
+message Expression {
+  double first_number = 1;
+  // Campo repetido para operaciones adicionales (operador + número)
+  repeated Operation operations = 2;
+}
+
+// Mensaje de resultado
+message Result {
+  bool success = 1;
+  double value = 2;
+  string error = 3;
+}
