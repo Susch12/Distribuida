@@ -26,13 +26,38 @@ func main() {
 
 	// Conectar al servidor
 	fmt.Printf("Conectando a %s...\n", serverAddr)
-	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	// Usar grpc.NewClient (reemplaza el deprecated grpc.Dial)
+	conn, err := grpc.NewClient(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("No se pudo conectar: %v", err)
+		log.Fatalf("Error al crear el cliente gRPC: %v\nVerifica que la dirección del servidor sea correcta.", err)
 	}
 	defer conn.Close()
 
 	client := pb.NewCalculatorClient(conn)
+
+	// Probar la conexión con un timeout
+	fmt.Print("Verificando conectividad... ")
+	testCtx, testCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer testCancel()
+
+	// Hacer una llamada de prueba para verificar que el servidor responde
+	testExpr := &pb.Expression{
+		FirstNumber: 0,
+		Operations:  []*pb.Operation{},
+	}
+	_, err = client.Evaluate(testCtx, testExpr)
+	if err != nil {
+		fmt.Println("✗")
+		log.Fatalf("\nError: No se pudo conectar al servidor en %s\n"+
+			"Posibles causas:\n"+
+			"  • El servidor no está ejecutándose\n"+
+			"  • La dirección IP/puerto es incorrecta\n"+
+			"  • Hay un firewall bloqueando la conexión\n"+
+			"  • El servidor no es accesible desde esta red\n"+
+			"\nDetalles técnicos: %v", serverAddr, err)
+	}
+	fmt.Println("✓")
 	scanner := bufio.NewScanner(os.Stdin)
 
 	// Mostrar banner de bienvenida
@@ -90,12 +115,20 @@ func main() {
 		cancel()
 
 		if err != nil {
-			fmt.Printf("[!] Error de servidor: %v\n\n", err)
+			// Distinguir entre diferentes tipos de errores
+			if ctx.Err() == context.DeadlineExceeded {
+				fmt.Printf("[!] Error: Tiempo de espera agotado. El servidor no respondió a tiempo.\n")
+				fmt.Printf("    Verifica que el servidor esté funcionando correctamente.\n\n")
+			} else {
+				fmt.Printf("[!] Error de comunicación con el servidor:\n")
+				fmt.Printf("    %v\n", err)
+				fmt.Printf("    El servidor puede estar caído o inaccesible.\n\n")
+			}
 		} else {
 			if result.Success {
 				fmt.Printf("[+] Resultado: %g\n\n", result.Value)
 			} else {
-				fmt.Printf("[!] Error: %s\n\n", result.Error)
+				fmt.Printf("[!] Error de cálculo: %s\n\n", result.Error)
 			}
 		}
 	}
@@ -268,17 +301,21 @@ func runExamples(client pb.CalculatorClient) {
 		fmt.Printf("[Ejemplo %d] %s\n", i+1, example.description)
 		fmt.Printf("  Entrada: %s\n", example.input)
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		result, err := client.Evaluate(ctx, example.expression)
 		cancel()
 
 		if err != nil {
-			fmt.Printf("  [!] Error de servidor: %v\n", err)
+			if ctx.Err() == context.DeadlineExceeded {
+				fmt.Printf("  [!] Error: Tiempo de espera agotado\n")
+			} else {
+				fmt.Printf("  [!] Error de comunicación: %v\n", err)
+			}
 		} else {
 			if result.Success {
 				fmt.Printf("  [+] Resultado: %g\n", result.Value)
 			} else {
-				fmt.Printf("  [!] Error: %s\n", result.Error)
+				fmt.Printf("  [!] Error de cálculo: %s\n", result.Error)
 			}
 		}
 		fmt.Println()
