@@ -1,0 +1,22 @@
+<products>
+  <product>
+    <id>4</id>
+    <name>Mouse</name>
+    <price>454.5</price>
+  </product>
+  <product>
+    <id>29</id>
+    <name>Smartphone</name>
+    <price>731.7</price>
+  </product>
+  <product>
+    <id>16</id>
+    <name>RAM</name>
+    <price>143</price>
+  </product>
+  <product>
+    <id>32</id>
+    <name>SSD</name>
+    <price>203.5</price>
+  </product>
+</products>

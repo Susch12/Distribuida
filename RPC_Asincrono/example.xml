@@ -1,0 +1,17 @@
+<products>
+  <product>
+    <id>1</id>
+    <name>Laptop</name>
+    <price>799.99</price>
+  </product>
+  <product>
+    <id>2</id>
+    <name>Mouse</name>
+    <price>25.50</price>
+  </product>
+  <product>
+    <id>3</id>
+    <name>Teclado</name>
+    <price>45.00</price>
+  </product>
+</products>
