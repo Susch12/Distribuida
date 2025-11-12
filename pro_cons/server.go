@@ -12,6 +12,7 @@ import (
 
 	pb "calculator/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 )
 
 const (
@@ -35,6 +36,7 @@ type producerConsumerServer struct {
 	// Cola de vectores
 	queue       chan Vector
 	queueClosed bool
+	queueMutex  sync.RWMutex // Protege queueClosed
 
 	// Control de vectores únicos
 	generatedVectors map[string]bool
@@ -70,7 +72,8 @@ func vectorID(n1, n2, n3 int32) string {
 
 // Genera vectores únicos de 3 números aleatorios y los almacena en la cola
 func (s *producerConsumerServer) produceVectors() {
-	rand.Seed(time.Now().UnixNano())
+	// Nota: rand.Seed() ya no es necesario en Go 1.20+
+	// Go usa un generador de números aleatorios seguro por defecto
 	vectorCount := 0
 
 	log.Println("Productor: Iniciando generación de vectores...")
@@ -83,8 +86,10 @@ func (s *producerConsumerServer) produceVectors() {
 
 		if stopped {
 			log.Println("Productor: Sistema detenido, cerrando cola...")
+			s.queueMutex.Lock()
 			close(s.queue)
 			s.queueClosed = true
+			s.queueMutex.Unlock()
 			return
 		}
 
@@ -159,8 +164,8 @@ func (s *producerConsumerServer) GetNumbers(ctx context.Context, req *pb.NumberR
 			SystemStopped: false,
 		}, nil
 
-	case <-time.After(2 * time.Second):
-		// Timeout - cola vacía temporalmente
+	case <-time.After(100 * time.Millisecond):
+		// Timeout - cola vacía temporalmente (reducido para mejor rendimiento)
 		return &pb.NumberResponse{
 			Available:     false,
 			SystemStopped: false,
@@ -183,22 +188,20 @@ func (s *producerConsumerServer) SubmitResult(ctx context.Context, req *pb.Resul
 		}, nil
 	}
 
-	// Actualizar estadísticas
+	// Actualizar estadísticas (mantener el lock lo más corto posible)
 	s.statsMutex.Lock()
-
 	s.totalResults++
 	s.resultSum += int64(req.Result)
 	s.clientStats[req.ClientId]++
-
 	currentTotal := s.totalResults
+	shouldLog := (currentTotal % 10000 == 0)
+	s.statsMutex.Unlock()
 
-	// Mostrar progreso cada 10,000 resultados
-	if currentTotal%10000 == 0 {
+	// Logging fuera del mutex crítico para mejor rendimiento
+	if shouldLog {
 		log.Printf("Progreso: %d resultados recibidos (%.2f%% completado)",
 			currentTotal, float64(currentTotal)/float64(MAX_RESULTS)*100)
 	}
-
-	s.statsMutex.Unlock()
 
 	// Verificar si alcanzamos el límite
 	if currentTotal >= MAX_RESULTS {
@@ -283,7 +286,23 @@ func main() {
 		log.Fatalf("Error al escuchar: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
+	// Crear servidor gRPC con opciones de rendimiento optimizadas
+	grpcServer := grpc.NewServer(
+		grpc.MaxConcurrentStreams(1000),              // Permitir más streams concurrentes
+		grpc.MaxRecvMsgSize(1024*1024*10),            // 10 MB max receive
+		grpc.MaxSendMsgSize(1024*1024*10),            // 10 MB max send
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     15 * time.Minute, // Cerrar conexiones inactivas después de 15 min
+			MaxConnectionAge:      30 * time.Minute, // Máxima edad de conexión
+			MaxConnectionAgeGrace: 5 * time.Second,  // Tiempo de gracia para cerrar
+			Time:                  5 * time.Second,  // Ping cada 5 segundos
+			Timeout:               1 * time.Second,  // Timeout de ping
+		}),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             5 * time.Second, // Mínimo tiempo entre pings del cliente
+			PermitWithoutStream: true,            // Permitir pings sin streams
+		}),
+	)
 	pb.RegisterProducerConsumerServer(grpcServer, server)
 
 	log.Println(strings.Repeat("=", 70))

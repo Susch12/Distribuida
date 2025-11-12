@@ -10,6 +10,7 @@ import (
 	pb "calculator/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 // Aplica la función matemática a los 3 números
@@ -28,8 +29,20 @@ func main() {
 		clientID = fmt.Sprintf("Cliente-%d", time.Now().UnixNano()%10000)
 	}
 
-	// Conectar al servidor
-	conn, err := grpc.Dial("localhost:50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// Conectar al servidor con opciones de rendimiento optimizadas
+	conn, err := grpc.Dial("localhost:50051",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithDefaultCallOptions(
+			grpc.MaxCallRecvMsgSize(1024*1024*10), // 10 MB
+			grpc.MaxCallSendMsgSize(1024*1024*10), // 10 MB
+		),
+		// Opciones de keep-alive para mantener conexiones activas
+		grpc.WithKeepaliveParams(keepalive.ClientParameters{
+			Time:                10 * time.Second, // Enviar pings cada 10 segundos
+			Timeout:             3 * time.Second,  // Esperar pong por 3 segundos
+			PermitWithoutStream: true,             // Permitir pings sin streams activos
+		}),
+	)
 	if err != nil {
 		log.Fatalf("[%s] No se pudo conectar: %v", clientID, err)
 	}
@@ -43,9 +56,10 @@ func main() {
 	consecutiveFailures := 0
 	maxConsecutiveFailures := 5
 
+	// Reutilizar contextos para mejor rendimiento
 	for {
-		// Solicitar números al servidor
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// Solicitar números al servidor (timeout reducido para mejor rendimiento)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 		response, err := client.GetNumbers(ctx, &pb.NumberRequest{ClientId: clientID})
 		cancel()
 
@@ -79,8 +93,8 @@ func main() {
 		// Aplicar la función matemática
 		result := applyMathFunction(response.Num1, response.Num2, response.Num3)
 
-		// Enviar el resultado al servidor
-		ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
+		// Enviar el resultado al servidor (timeout reducido)
+		ctx, cancel = context.WithTimeout(context.Background(), 2*time.Second)
 		submitResp, err := client.SubmitResult(ctx, &pb.ResultRequest{
 			ClientId: clientID,
 			VectorId: response.VectorId,
