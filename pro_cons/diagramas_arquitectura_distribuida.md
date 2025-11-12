@@ -649,3 +649,4 @@ graph TB
 
 **Generado:** 11 de Noviembre de 2025
 **Sistema:** Productor-Consumidor gRPC v1.0
+
