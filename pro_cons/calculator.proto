@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package calculator;
+
+option go_package = "calculator/proto";
+
+// Servicio productor-consumidor
+service ProducerConsumer {
+  // Cliente solicita números del servidor (cola)
+  rpc GetNumbers(NumberRequest) returns (NumberResponse);
+
+  // Cliente envía resultado procesado al servidor
+  rpc SubmitResult(ResultRequest) returns (ResultResponse);
+}
+
+// Solicitud de números por el cliente
+message NumberRequest {
+  string client_id = 1;  // Identificador del cliente
+}
+
+// Respuesta con vector de números
+message NumberResponse {
+  bool available = 1;      // Si hay números disponibles
+  string vector_id = 2;    // ID único del vector
+  int32 num1 = 3;          // Primer número (1-1000)
+  int32 num2 = 4;          // Segundo número (1-1000)
+  int32 num3 = 5;          // Tercer número (1-1000)
+  bool system_stopped = 6; // Si el sistema alcanzó 1 millón de resultados
+}
+
+// Solicitud de resultado procesado
+message ResultRequest {
+  string client_id = 1;  // ID del cliente
+  string vector_id = 2;  // ID del vector procesado
+  int32 result = 3;      // Resultado de la operación matemática
+}
+
+// Respuesta de confirmación
+message ResultResponse {
+  bool accepted = 1;         // Si el resultado fue aceptado
+  int64 total_results = 2;   // Total de resultados recibidos
+  bool system_stopped = 3;   // Si el sistema debe detenerse
+}
+
