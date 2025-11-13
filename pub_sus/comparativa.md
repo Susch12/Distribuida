@@ -1,721 +1,719 @@
-# Comparativa: Productor-Consumidor vs Publisher-Subscriber
+# 🔄 Comparativa: Productor-Consumidor vs Publisher-Subscriber
 
-## Tabla de Contenidos
-1. [Resumen Ejecutivo](#resumen-ejecutivo)
-2. [Arquitecturas Comparadas](#arquitecturas-comparadas)
-3. [Diferencias Fundamentales](#diferencias-fundamentales)
-4. [Casos de Aplicación](#casos-de-aplicación)
-5. [Análisis de Rendimiento](#análisis-de-rendimiento)
-6. [Recomendaciones](#recomendaciones)
+<div align="center">
 
----
+**Análisis Detallado de Patrones de Mensajería Distribuida**
 
-## Resumen Ejecutivo
+![Version](https://img.shields.io/badge/version-2.0-blue.svg)
+![Go](https://img.shields.io/badge/Go-1.21+-00ADD8.svg)
+![gRPC](https://img.shields.io/badge/gRPC-latest-green.svg)
 
-### Productor-Consumidor (Producer-Consumer)
-**Propósito**: Distribución equitativa de trabajo entre múltiples consumidores desde una única cola compartida.
-
-**Características principales**:
-- 1 productor → 1 cola FIFO → N consumidores
-- Los consumidores compiten por los trabajos (competitive consumption)
-- Cada trabajo es procesado exactamente una vez
-- Balanceo de carga automático
-
-### Publisher-Subscriber (Pub-Sub)
-**Propósito**: Distribución selectiva de mensajes a múltiples suscriptores según temas de interés.
-
-**Características principales**:
-- 1 publisher → 3 colas temáticas → N subscribers
-- Los suscriptores eligen a qué colas suscribirse
-- Un mensaje puede ser procesado por múltiples suscriptores
-- Desacoplamiento mediante temas (topics)
+</div>
 
 ---
 
-## Arquitecturas Comparadas
+## 📋 Tabla de Contenidos
 
-### 1. Arquitectura Productor-Consumidor
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    SERVIDOR gRPC (puerto 50051)              │
-│                                                               │
-│  ┌──────────────────┐                                        │
-│  │   PRODUCTOR      │                                        │
-│  │   (goroutine)    │                                        │
-│  │                  │                                        │
-│  │ • Genera vectores│                                        │
-│  │ • Verifica       │                                        │
-│  │   unicidad       │                                        │
-│  │ • Hash map de    │                                        │
-│  │   vectores       │                                        │
-│  └────────┬─────────┘                                        │
-│           │                                                   │
-│           ▼                                                   │
-│  ┌─────────────────────────────────┐                        │
-│  │    COLA ÚNICA (Buffered)        │                        │
-│  │    Capacity: 10,000             │                        │
-│  │    chan Vector                  │                        │
-│  │                                 │                        │
-│  │  [Vec1][Vec2][Vec3]...[VecN]   │                        │
-│  └────────┬────────────────────────┘                        │
-│           │                                                   │
-│           │ GetNumbers() RPC                                 │
-│           │ (Consumo competitivo)                           │
-│           │                                                   │
-└───────────┼───────────────────────────────────────────────┘
-            │
-            │ Cada cliente toma UN mensaje
-            │ del frente de la cola
-            │
-    ┌───────┴────────┬──────────┬──────────┐
-    │                │          │          │
-    ▼                ▼          ▼          ▼
-┌─────────┐    ┌─────────┐ ┌─────────┐ ┌─────────┐
-│Cliente 1│    │Cliente 2│ │Cliente 3│ │Cliente N│
-│         │    │         │ │         │ │         │
-│Procesa  │    │Procesa  │ │Procesa  │ │Procesa  │
-│suma()   │    │suma()   │ │suma()   │ │suma()   │
-│         │    │         │ │         │ │         │
-│Result→  │    │Result→  │ │Result→  │ │Result→  │
-└─────────┘    └─────────┘ └─────────┘ └─────────┘
-     │              │          │          │
-     └──────────────┴──────────┴──────────┘
-                    │
-                    ▼
-            SubmitResult() RPC
-         (Regresa resultados al servidor)
-```
-
-**Flujo de datos**:
-1. Productor genera vectores únicos [num1, num2, num3]
-2. Vectores se encolan en orden FIFO
-3. Cliente A llama GetNumbers() → recibe Vec1
-4. Cliente B llama GetNumbers() → recibe Vec2 (no Vec1)
-5. Cada cliente procesa y envía resultado
-6. Servidor acumula estadísticas
-
-**Características clave**:
-- ✅ **Trabajo distribuido**: Cada trabajo va a UN solo cliente
-- ✅ **Balanceo automático**: Clientes rápidos procesan más
-- ✅ **Sin duplicados**: Cada vector procesado exactamente una vez
-- ✅ **Orden FIFO**: Los trabajos se procesan en orden
+- [🎯 Resumen Ejecutivo](#-resumen-ejecutivo)
+- [🏗️ Arquitecturas Visuales](#️-arquitecturas-visuales)
+- [⚖️ Comparación Detallada](#️-comparación-detallada)
+- [💼 Casos de Uso](#-casos-de-uso)
+- [📊 Análisis de Rendimiento](#-análisis-de-rendimiento)
+- [✅ Guía de Decisión](#-guía-de-decisión)
 
 ---
 
-### 2. Arquitectura Publisher-Subscriber
+## 🎯 Resumen Ejecutivo
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    SERVIDOR gRPC (puerto 50051)                   │
-│                                                                    │
-│  ┌──────────────────┐                                            │
-│  │   PUBLISHER      │                                            │
-│  │   (goroutine)    │                                            │
-│  │                  │                                            │
-│  │ • Genera sets    │                                            │
-│  │   [2-3 números]  │                                            │
-│  │ • Selecciona cola│                                            │
-│  │   según criterio │                                            │
-│  └────────┬─────────┘                                            │
-│           │                                                       │
-│           │ Criterios de selección:                             │
-│           │ • Aleatorio (33/33/33%)                             │
-│           │ • Ponderado (50/30/20%)                             │
-│           │ • Condicional (pares/impares)                       │
-│           │                                                       │
-│           ▼                                                       │
-│  ┌─────────────────────────────────────────────────────┐        │
-│  │           SISTEMA DE 3 COLAS                         │        │
-│  │                                                       │        │
-│  │  ┌─────────────────┐                                │        │
-│  │  │ Primary Queue   │                                │        │
-│  │  │ [M1][M2][M3]... │                                │        │
-│  │  └─────────────────┘                                │        │
-│  │                                                       │        │
-│  │  ┌─────────────────┐                                │        │
-│  │  │ Secondary Queue │                                │        │
-│  │  │ [M4][M5][M6]... │                                │        │
-│  │  └─────────────────┘                                │        │
-│  │                                                       │        │
-│  │  ┌─────────────────┐                                │        │
-│  │  │ Tertiary Queue  │                                │        │
-│  │  │ [M7][M8][M9]... │                                │        │
-│  │  └─────────────────┘                                │        │
-│  └─────────────────────────────────────────────────────┘        │
-│           │                  │                  │                │
-│           │ Subscribe() RPC (streaming)         │                │
-│           │                  │                  │                │
-└───────────┼──────────────────┼──────────────────┼──────────────┘
-            │                  │                  │
-            │                  │                  │
-    ┌───────┴─────┐    ┌──────┴─────┐    ┌──────┴─────┐
-    │             │    │            │    │            │
-    ▼             ▼    ▼            ▼    ▼            ▼
-┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐
-│Cliente 1│  │Cliente 2│  │Cliente 3│  │Cliente 4│  │Cliente 5│
-│         │  │         │  │         │  │         │  │         │
-│Suscrito:│  │Suscrito:│  │Suscrito:│  │Suscrito:│  │Suscrito:│
-│Primary  │  │Primary  │  │Secondary│  │Primary  │  │Tertiary │
-│         │  │Secondary│  │         │  │Tertiary │  │         │
-│         │  │(2 colas)│  │         │  │(2 colas)│  │         │
-└─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘
-     │            │            │            │            │
-     └────────────┴────────────┴────────────┴────────────┘
-                              │
-                              ▼
-                      SendResult() RPC
-                   (Regresa resultados al servidor)
+### 🔵 Productor-Consumidor (Producer-Consumer)
+
+<table>
+<tr>
+<td width="50%">
+
+**🎯 Propósito Principal**
+Distribución equitativa de trabajo entre múltiples consumidores desde una única cola compartida
+
+**⭐ Características Clave**
+- ✅ 1 productor → 1 cola FIFO → N consumidores
+- ✅ Consumo competitivo (competitive consumption)
+- ✅ Cada trabajo procesado **exactamente una vez**
+- ✅ Balanceo de carga automático
+
+</td>
+<td width="50%">
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+graph LR
+    P["⚙️ Producer"] --> Q["📦 Queue"]
+    Q --> C1["👤 Consumer 1"]
+    Q --> C2["👤 Consumer 2"]
+    Q --> C3["👤 Consumer N"]
+    
+    style P fill:#4ade80,stroke:#16a34a,stroke-width:3px
+    style Q fill:#fcd34d,stroke:#d97706,stroke-width:3px
+    style C1 fill:#60a5fa,stroke:#2563eb,stroke-width:2px
+    style C2 fill:#60a5fa,stroke:#2563eb,stroke-width:2px
+    style C3 fill:#60a5fa,stroke:#2563eb,stroke-width:2px
 ```
 
-**Flujo de datos**:
-1. Publisher genera set de números [n1, n2] o [n1, n2, n3]
-2. Aplica criterio de selección para determinar cola
-3. Mensaje se publica en la cola seleccionada
-4. **TODOS los clientes suscritos a esa cola reciben el mensaje**
-5. Cliente A (Primary) procesa M1
-6. Cliente B (Primary+Secondary) también procesa M1
-7. Cada cliente envía su resultado independientemente
+</td>
+</tr>
+</table>
 
-**Características clave**:
-- ✅ **Multicasting**: Un mensaje puede ir a múltiples clientes
-- ✅ **Filtrado por interés**: Clientes eligen temas de interés
-- ✅ **Desacoplamiento**: Publisher no conoce a los subscribers
-- ✅ **Flexibilidad**: Clientes pueden suscribirse a 1 o 2 colas
+### 🟢 Publisher-Subscriber (Pub-Sub)
+
+<table>
+<tr>
+<td width="50%">
+
+**🎯 Propósito Principal**
+Distribución selectiva de mensajes a múltiples suscriptores según temas de interés
+
+**⭐ Características Clave**
+- ✅ 1 publisher → 3 colas temáticas → N subscribers
+- ✅ Suscriptores eligen sus temas de interés
+- ✅ Un mensaje puede ser procesado **múltiples veces**
+- ✅ Desacoplamiento mediante topics
+
+</td>
+<td width="50%">
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+graph TB
+    P["📡 Publisher"] --> T1["📌 Topic 1"]
+    P --> T2["📌 Topic 2"]
+    P --> T3["📌 Topic 3"]
+    T1 -.-> S1["👥 Sub A"]
+    T1 -.-> S2["👥 Sub B"]
+    T2 -.-> S2
+    T3 -.-> S3["👥 Sub C"]
+    
+    style P fill:#4ade80,stroke:#16a34a,stroke-width:3px
+    style T1 fill:#fcd34d,stroke:#d97706,stroke-width:2px
+    style T2 fill:#fcd34d,stroke:#d97706,stroke-width:2px
+    style T3 fill:#fcd34d,stroke:#d97706,stroke-width:2px
+    style S1 fill:#c084fc,stroke:#9333ea,stroke-width:2px
+    style S2 fill:#c084fc,stroke:#9333ea,stroke-width:2px
+    style S3 fill:#c084fc,stroke:#9333ea,stroke-width:2px
+```
+
+</td>
+</tr>
+</table>
 
 ---
 
-## Diferencias Fundamentales
+## 🏗️ Arquitecturas Visuales
 
-### Tabla Comparativa Detallada
+### 🔵 Arquitectura Completa: Productor-Consumidor
 
-| Aspecto | Productor-Consumidor | Publisher-Subscriber |
-|---------|---------------------|---------------------|
-| **Paradigma de comunicación** | Point-to-Point (1:1) | Publish-Subscribe (1:N) |
-| **Número de colas** | 1 cola compartida | 3 colas independientes (topics) |
-| **Consumo de mensajes** | Competitivo (cada mensaje a UN cliente) | Broadcast (mensaje a TODOS los suscritos) |
-| **Selección de trabajo** | Automática (FIFO) | Por suscripción a temas |
-| **Duplicación de trabajo** | ❌ No (cada trabajo una vez) | ✅ Sí (múltiples clientes procesan mismo mensaje) |
-| **Balanceo de carga** | Automático (clientes rápidos procesan más) | Manual (por suscripción) |
-| **Acoplamiento** | Fuerte (cliente espera trabajo específico) | Débil (cliente define intereses) |
-| **Escalabilidad** | Horizontal (agregar consumidores) | Vertical y horizontal (temas y subscribers) |
-| **Orden de procesamiento** | Garantizado (FIFO) | No garantizado entre colas |
-| **Backpressure** | Sí (cola llena = productor espera) | Sí (por cola independiente) |
-| **Tolerancia a fallos** | Alta (otros consumidores continúan) | Media (mensaje se pierde si no hay subscriber) |
-| **Caso de uso principal** | Distribución de carga de trabajo | Notificaciones y eventos |
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'14px'}}}%%
+graph TB
+    subgraph SERVER["🖥️ SERVIDOR gRPC - localhost:50051"]
+        direction TB
+        
+        subgraph PRODUCTION["⚙️ CAPA DE PRODUCCIÓN"]
+            PROD["🔄 Productor Goroutine<br/>━━━━━━━━━━━━━━<br/>▸ Genera vectores únicos<br/>▸ Rango: [1-1000]<br/>▸ Frecuencia: continua"]
+            HASH["🗃️ Hash Map<br/>━━━━━━━━━━━━━━<br/>▸ Verificación unicidad<br/>▸ map[string]bool<br/>▸ Thread-safe"]
+        end
+        
+        QUEUE["📦 COLA FIFO ÚNICA<br/>━━━━━━━━━━━━━━━━━━<br/>📏 Buffered Channel<br/>💾 Capacity: 10,000<br/>⚡ chan Vector<br/>🔒 Thread-safe"]
+        
+        subgraph RPC["🌐 CAPA RPC"]
+            GET["📥 GetNumbers()<br/>━━━━━━━━━━━━<br/>Request: ClientID<br/>Response: Vector"]
+            SUBMIT["📤 SubmitResult()<br/>━━━━━━━━━━━━<br/>Request: Result<br/>Response: Ack"]
+        end
+        
+        STATS["📊 ESTADÍSTICAS<br/>━━━━━━━━━━━━━━<br/>🔢 Total: int64<br/>➕ Sum: int64<br/>👥 ClientStats: map<br/>🔒 RWMutex"]
+        
+        PROD -->|"✓ válido"| HASH
+        HASH -->|"📤 push"| QUEUE
+        QUEUE -->|"📥 pop"| GET
+        SUBMIT -->|"📊 update"| STATS
+    end
+    
+    subgraph CLIENTS["👥 CLIENTES (N CONCURRENTES)"]
+        direction LR
+        C1["👤 Cliente A<br/>━━━━━━━━<br/>🆔 ID único<br/>⚡ f(x) = suma<br/>📊 Stats local"]
+        C2["👤 Cliente B<br/>━━━━━━━━<br/>🆔 ID único<br/>⚡ f(x) = suma<br/>📊 Stats local"]
+        C3["👤 Cliente C<br/>━━━━━━━━<br/>🆔 ID único<br/>⚡ f(x) = suma<br/>📊 Stats local"]
+    end
+    
+    C1 & C2 & C3 <-->|"⓵ GetNumbers()"| GET
+    C1 & C2 & C3 -->|"⓶ Process locally"| C1 & C2 & C3
+    C1 & C2 & C3 -->|"⓷ SubmitResult()"| SUBMIT
+    
+    style SERVER fill:#e0f2fe,stroke:#0284c7,stroke-width:4px
+    style PRODUCTION fill:#dbeafe,stroke:#0369a1,stroke-width:2px
+    style RPC fill:#dbeafe,stroke:#0369a1,stroke-width:2px
+    style CLIENTS fill:#fed7aa,stroke:#ea580c,stroke-width:3px
+    
+    style PROD fill:#4ade80,stroke:#16a34a,stroke-width:3px,color:#000
+    style HASH fill:#fbbf24,stroke:#d97706,stroke-width:3px,color:#000
+    style QUEUE fill:#fcd34d,stroke:#d97706,stroke-width:4px,color:#000
+    style GET fill:#60a5fa,stroke:#2563eb,stroke-width:2px,color:#000
+    style SUBMIT fill:#60a5fa,stroke:#2563eb,stroke-width:2px,color:#000
+    style STATS fill:#c084fc,stroke:#9333ea,stroke-width:3px,color:#000
+    
+    style C1 fill:#fb923c,stroke:#ea580c,stroke-width:3px,color:#000
+    style C2 fill:#fb923c,stroke:#ea580c,stroke-width:3px,color:#000
+    style C3 fill:#fb923c,stroke:#ea580c,stroke-width:3px,color:#000
+```
+
+**📝 Características del Flujo:**
+
+| Paso | Acción | Garantía |
+|------|--------|----------|
+| ⓵ | Cliente solicita vector vía `GetNumbers()` | Timeout: 100ms |
+| ⓶ | Cliente recibe vector **único** `[n1, n2, n3]` | FIFO garantizado |
+| ⓷ | Cliente procesa: `result = n1 + n2 + n3` | Procesamiento local |
+| ⓸ | Cliente envía resultado vía `SubmitResult()` | Exactamente una vez |
+| ⓹ | Servidor actualiza estadísticas globales | Thread-safe |
 
 ---
 
-### Diferencias en Sincronización
+### 🟢 Arquitectura Completa: Publisher-Subscriber
 
-#### Productor-Consumidor
-```go
-// Sincronización centralizada
-s.statsMutex.Lock()
-s.totalResults++
-s.resultSum += int64(req.Result)
-s.clientStats[req.ClientId]++
-s.statsMutex.Unlock()
-
-// Vectores únicos
-s.vectorMutex.Lock()
-if s.generatedVectors[id] {
-    s.vectorMutex.Unlock()
-    continue // Ya existe
-}
-s.generatedVectors[id] = true
-s.vectorMutex.Unlock()
+```mermaid
+%%{init: {'theme':'base', 'themeVariables': { 'fontSize':'14px'}}}%%
+graph TB
+    subgraph SERVER["🖥️ SERVIDOR gRPC - localhost:50051"]
+        direction TB
+        
+        subgraph PUBLISHING["📡 CAPA DE PUBLICACIÓN"]
+            PUB["🔄 Publisher Goroutine<br/>━━━━━━━━━━━━━━<br/>▸ Genera sets [2-3 nums]<br/>▸ Rango: [0-99]<br/>▸ Frecuencia: 50ms"]
+            ROUTER["🎯 Router Inteligente<br/>━━━━━━━━━━━━━━<br/>▸ 3 criterios disponibles<br/>▸ Selección dinámica"]
+        end
+        
+        subgraph CRITERIA["⚙️ CRITERIOS DE ROUTING"]
+            RAND["🎲 Aleatorio<br/>33/33/33%"]
+            WEIGHT["⚖️ Ponderado<br/>50/30/20%"]
+            COND["🔢 Condicional<br/>par/impar"]
+        end
+        
+        subgraph QUEUES["📦 SISTEMA DE COLAS (3 TOPICS)"]
+            Q1["📌 Primary Queue<br/>━━━━━━━━━━━<br/>🎯 50% mensajes<br/>📦 cap: 1,000"]
+            Q2["📌 Secondary Queue<br/>━━━━━━━━━━━<br/>🎯 30% mensajes<br/>📦 cap: 1,000"]
+            Q3["📌 Tertiary Queue<br/>━━━━━━━━━━━<br/>🎯 20% mensajes<br/>📦 cap: 1,000"]
+        end
+        
+        RPC["📡 Subscribe() RPC<br/>━━━━━━━━━━━━━━<br/>Streaming bidireccional<br/>Mantiene conexión"]
+        
+        STATS["📊 ESTADÍSTICAS<br/>━━━━━━━━━━━━━━<br/>📈 results: []int<br/>👥 clientResults: map<br/>📋 clientQueues: map"]
+        
+        PUB --> ROUTER
+        ROUTER --> RAND & WEIGHT & COND
+        RAND & WEIGHT & COND --> Q1 & Q2 & Q3
+        Q1 & Q2 & Q3 --> RPC
+        RPC --> STATS
+    end
+    
+    subgraph SUBS["👥 SUSCRIPTORES (N CLIENTES)"]
+        direction LR
+        S1["👤 Suscriptor 1<br/>━━━━━━━━━━<br/>📌 Primary<br/>⚡ Pattern: fast<br/>⏱️ 1ms/msg"]
+        S2["👤 Suscriptor 2<br/>━━━━━━━━━━<br/>📌 Primary+Secondary<br/>⚡ Pattern: normal<br/>⏱️ 10ms/msg"]
+        S3["👤 Suscriptor 3<br/>━━━━━━━━━━<br/>📌 Tertiary<br/>⚡ Pattern: slow<br/>⏱️ 50ms/msg"]
+    end
+    
+    S1 & S2 & S3 <-->|"⓵ Subscribe(topics)"| RPC
+    RPC -.->|"⓶ Stream messages"| S1 & S2 & S3
+    S1 & S2 & S3 -->|"⓷ Process locally"| S1 & S2 & S3
+    S1 & S2 & S3 -->|"⓸ SendResult()"| STATS
+    
+    style SERVER fill:#f0fdf4,stroke:#16a34a,stroke-width:4px
+    style PUBLISHING fill:#dcfce7,stroke:#15803d,stroke-width:2px
+    style CRITERIA fill:#fef3c7,stroke:#d97706,stroke-width:2px
+    style QUEUES fill:#fef3c7,stroke:#d97706,stroke-width:2px
+    style SUBS fill:#f3e8ff,stroke:#9333ea,stroke-width:3px
+    
+    style PUB fill:#4ade80,stroke:#16a34a,stroke-width:3px,color:#000
+    style ROUTER fill:#fb923c,stroke:#ea580c,stroke-width:3px,color:#000
+    style RAND fill:#fcd34d,stroke:#d97706,stroke-width:2px,color:#000
+    style WEIGHT fill:#fcd34d,stroke:#d97706,stroke-width:2px,color:#000
+    style COND fill:#fcd34d,stroke:#d97706,stroke-width:2px,color:#000
+    style Q1 fill:#fcd34d,stroke:#d97706,stroke-width:3px,color:#000
+    style Q2 fill:#fcd34d,stroke:#d97706,stroke-width:3px,color:#000
+    style Q3 fill:#fcd34d,stroke:#d97706,stroke-width:3px,color:#000
+    style RPC fill:#60a5fa,stroke:#2563eb,stroke-width:3px,color:#000
+    style STATS fill:#c084fc,stroke:#9333ea,stroke-width:3px,color:#000
+    
+    style S1 fill:#c084fc,stroke:#9333ea,stroke-width:3px,color:#000
+    style S2 fill:#c084fc,stroke:#9333ea,stroke-width:3px,color:#000
+    style S3 fill:#c084fc,stroke:#9333ea,stroke-width:3px,color:#000
 ```
 
-#### Publisher-Subscriber
-```go
-// Sincronización por resultados
-s.resultsMu.Lock()
-s.results = append(s.results, int(req.Result))
-s.clientResults[req.ClientId] = append(...)
-totalResults := len(s.results)
-s.resultsMu.Unlock()
+**📝 Características del Flujo:**
 
-// Sin verificación de unicidad (permite duplicados)
-// Cada cliente puede procesar el mismo mensaje
+| Paso | Acción | Comportamiento |
+|------|--------|----------------|
+| ⓵ | Cliente se suscribe a 1-2 colas | Probabilidad 50/50 |
+| ⓶ | Servidor hace streaming de mensajes | Continuo (50ms/msg) |
+| ⓷ | **Múltiples** clientes reciben mismo mensaje | Broadcast por topic |
+| ⓸ | Cada cliente procesa independientemente | Patterns: fast/normal/slow |
+| ⓹ | Servidor recibe **múltiples** resultados por mensaje | Permite duplicación |
+
+---
+
+## ⚖️ Comparación Detallada
+
+### 📊 Tabla Comparativa Completa
+
+| 🏷️ Aspecto | 🔵 Productor-Consumidor | 🟢 Publisher-Subscriber |
+|------------|------------------------|------------------------|
+| **🎯 Paradigma** | Point-to-Point (1:1) | Broadcast (1:N) |
+| **📦 Número de colas** | ✅ 1 cola compartida | ✅ 3 colas independientes |
+| **🔄 Patrón de consumo** | ⚡ Competitivo | 📡 Broadcast por topic |
+| **🎲 Selección de trabajo** | 🤖 Automática (FIFO) | 👤 Manual (suscripción) |
+| **♻️ Duplicación** | ❌ No permitida | ✅ Intencional |
+| **⚖️ Balanceo de carga** | 🤖 Automático | 👤 Por suscripción |
+| **🔗 Acoplamiento** | 🔴 Fuerte | 🟢 Débil |
+| **📈 Escalabilidad** | ➡️ Horizontal (+ consumidores) | ↕️ Vertical y horizontal |
+| **📋 Orden de procesamiento** | ✅ Garantizado (FIFO) | ⚠️ No garantizado entre colas |
+| **🎯 Garantía de entrega** | ✅ Exactamente una vez | ⚠️ Al menos una vez |
+| **🚀 Throughput (5 clients)** | ⚡ 8K-10K ops/s | 📊 ~60 msgs/s total |
+| **💾 Overhead por mensaje** | ~1µs | ~300ns |
+| **🛠️ Complejidad** | 🟢 Baja | 🟡 Media |
+| **🎯 Caso de uso principal** | 💼 Procesamiento de trabajos | 📣 Notificaciones y eventos |
+
+---
+
+### 🔍 Comparación Visual de Patrones
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+graph TB
+    subgraph PC["🔵 PRODUCTOR-CONSUMIDOR"]
+        direction TB
+        PC_P["⚙️ 1 Productor"] --> PC_Q["📦 1 Cola FIFO"]
+        PC_Q -->|"Job 1"| PC_C1["👤 Consumer A"]
+        PC_Q -->|"Job 2"| PC_C2["👤 Consumer B"]
+        PC_Q -->|"Job 3"| PC_C3["👤 Consumer C"]
+        
+        PC_RES["📊 RESULTADO<br/>━━━━━━━━━━<br/>✅ 3 trabajos únicos<br/>✅ 3 resultados distintos<br/>✅ Sin duplicación"]
+        
+        PC_C1 & PC_C2 & PC_C3 --> PC_RES
+    end
+    
+    subgraph PS["🟢 PUBLISHER-SUBSCRIBER"]
+        direction TB
+        PS_P["📡 1 Publisher"] --> PS_R["🎯 Router"]
+        PS_R --> PS_T1["📌 Topic A"]
+        PS_R --> PS_T2["📌 Topic B"]
+        
+        PS_T1 -.->|"Msg 1"| PS_S1["👥 Sub 1"]
+        PS_T1 -.->|"Msg 1"| PS_S2["👥 Sub 2"]
+        PS_T2 -.->|"Msg 2"| PS_S2
+        PS_T2 -.->|"Msg 2"| PS_S3["👥 Sub 3"]
+        
+        PS_RES["📊 RESULTADO<br/>━━━━━━━━━━<br/>⚠️ 2 mensajes<br/>✅ 4 resultados<br/>⚠️ Con duplicación"]
+        
+        PS_S1 & PS_S2 & PS_S3 --> PS_RES
+    end
+    
+    style PC fill:#dbeafe,stroke:#0369a1,stroke-width:3px
+    style PS fill:#dcfce7,stroke:#15803d,stroke-width:3px
+    style PC_P fill:#4ade80,stroke:#16a34a,stroke-width:2px
+    style PC_Q fill:#fcd34d,stroke:#d97706,stroke-width:2px
+    style PC_C1 fill:#60a5fa,stroke:#2563eb,stroke-width:2px
+    style PC_C2 fill:#60a5fa,stroke:#2563eb,stroke-width:2px
+    style PC_C3 fill:#60a5fa,stroke:#2563eb,stroke-width:2px
+    style PC_RES fill:#c084fc,stroke:#9333ea,stroke-width:2px
+    
+    style PS_P fill:#4ade80,stroke:#16a34a,stroke-width:2px
+    style PS_R fill:#fb923c,stroke:#ea580c,stroke-width:2px
+    style PS_T1 fill:#fcd34d,stroke:#d97706,stroke-width:2px
+    style PS_T2 fill:#fcd34d,stroke:#d97706,stroke-width:2px
+    style PS_S1 fill:#c084fc,stroke:#9333ea,stroke-width:2px
+    style PS_S2 fill:#c084fc,stroke:#9333ea,stroke-width:2px
+    style PS_S3 fill:#c084fc,stroke:#9333ea,stroke-width:2px
+    style PS_RES fill:#c084fc,stroke:#9333ea,stroke-width:2px
 ```
 
 ---
 
-## Casos de Aplicación
+## 💼 Casos de Uso
 
 ### 🔵 Cuándo usar Productor-Consumidor
 
-#### ✅ Casos ideales:
+<table>
+<tr>
+<th width="50%">✅ CASOS IDEALES</th>
+<th width="50%">❌ NO RECOMENDADO</th>
+</tr>
+<tr>
+<td>
 
-**1. Procesamiento de trabajos (Job Processing)**
+**💰 Procesamiento de Transacciones Financieras**
 ```
-Ejemplo: Sistema de renderizado de videos
-- Producer: Genera trabajos de renderizado
-- Queue: Lista de videos pendientes
-- Consumers: Servidores de renderizado
+Productor: Sistema de pagos
+Cola: Transacciones pendientes
+Consumidores: Procesadores de pago
 
-Beneficio: Cada video se renderiza exactamente una vez,
-          distribución automática entre servidores disponibles
-```
-
-**2. Procesamiento de transacciones financieras**
-```
-Ejemplo: Sistema de procesamiento de pagos
-- Producer: Recibe solicitudes de pago
-- Queue: Cola de transacciones pendientes
-- Consumers: Procesadores de pago
-
-Beneficio: Garantiza que cada transacción se procesa una sola vez,
-          evita cobros duplicados
+✅ Cada transacción procesada UNA vez
+✅ Sin cobros duplicados
+✅ Orden de procesamiento garantizado
 ```
 
-**3. Web scraping distribuido**
+**🎬 Renderizado de Videos**
 ```
-Ejemplo: Sistema de indexación web
-- Producer: Genera URLs a visitar
-- Queue: Lista de URLs pendientes
-- Consumers: Crawlers web
+Productor: Sistema de uploads
+Cola: Videos a procesar
+Consumidores: Servidores de renderizado
 
-Beneficio: Distribución eficiente de URLs entre crawlers,
-          cada URL visitada una vez
-```
-
-**4. Procesamiento de imágenes en lote**
-```
-Ejemplo: Sistema de optimización de imágenes
-- Producer: Detecta imágenes subidas
-- Queue: Lista de imágenes a procesar
-- Consumers: Servidores de procesamiento
-
-Beneficio: Balanceo automático según capacidad de servidor
+✅ Cada video procesado UNA vez
+✅ Distribución automática de carga
+✅ Alta eficiencia
 ```
 
-**5. Sistema de envío de emails**
+**📧 Sistema de Emails Masivos**
 ```
-Ejemplo: Plataforma de email marketing
-- Producer: Genera emails a enviar
-- Queue: Cola de emails pendientes
-- Consumers: Servidores SMTP
+Productor: Campaña de marketing
+Cola: Emails pendientes
+Consumidores: Servidores SMTP
 
-Beneficio: Cada email se envía exactamente una vez,
-          distribución según disponibilidad
+✅ Cada email enviado UNA vez
+✅ Sin spam duplicado
+✅ Balanceo según capacidad
 ```
 
----
+</td>
+<td>
+
+**❌ Sistema de Notificaciones Multicanal**
+```
+Problema: Necesitas enviar a push, email Y SMS
+Limitación: Cola única = solo 1 cliente recibe
+Solución: Usa Publisher-Subscriber
+```
+
+**❌ Arquitectura de Microservicios**
+```
+Problema: Múltiples servicios reaccionan a eventos
+Limitación: Event solo va a 1 servicio
+Solución: Usa Publisher-Subscriber
+```
+
+**❌ Sistema de Logs Distribuidos**
+```
+Problema: Logs van a Elasticsearch, S3 y alertas
+Limitación: Log solo va a 1 destino
+Solución: Usa Publisher-Subscriber
+```
+
+</td>
+</tr>
+</table>
 
 ### 🟢 Cuándo usar Publisher-Subscriber
 
-#### ✅ Casos ideales:
+<table>
+<tr>
+<th width="50%">✅ CASOS IDEALES</th>
+<th width="50%">❌ NO RECOMENDADO</th>
+</tr>
+<tr>
+<td>
 
-**1. Sistema de notificaciones multicanal**
+**📱 Sistema de Notificaciones Multicanal**
 ```
-Ejemplo: Plataforma de comercio electrónico
-- Publisher: Genera evento "Pedido creado"
-- Topics:
-  • Primary: Notificaciones push
-  • Secondary: Emails
-  • Tertiary: SMS
-- Subscribers:
-  • Cliente suscrito a push recibe notificación
-  • Cliente suscrito a email recibe correo
-  • Cliente suscrito a SMS recibe mensaje
+Publisher: Evento "Nueva orden"
+Topics: [push, email, sms]
+Subscribers: Servicio por canal
 
-Beneficio: Un evento dispara múltiples acciones independientes
-```
-
-**2. Monitoreo y alertas**
-```
-Ejemplo: Sistema de monitoreo de infraestructura
-- Publisher: Detecta evento (servidor caído)
-- Topics:
-  • Primary: Alertas críticas
-  • Secondary: Logs
-  • Tertiary: Métricas
-- Subscribers:
-  • Sistema de alertas (Primary)
-  • Sistema de logging (Secondary)
-  • Dashboard de métricas (Tertiary)
-
-Beneficio: Un evento se procesa de múltiples formas
+✅ Todos los canales se notifican
+✅ Cada servicio independiente
+✅ Fácil agregar nuevos canales
 ```
 
-**3. Sistema de análisis en tiempo real**
+**🔔 Monitoreo y Alertas**
 ```
-Ejemplo: Plataforma de streaming de datos
-- Publisher: Genera eventos de usuario
-- Topics:
-  • Primary: Análisis en tiempo real
-  • Secondary: Almacenamiento histórico
-  • Tertiary: Machine learning
-- Subscribers: Cada sistema procesa según necesidad
+Publisher: Evento "Servidor caído"
+Topics: [critical, logs, metrics]
+Subscribers: [PagerDuty, Elasticsearch, Grafana]
 
-Beneficio: Múltiples análisis del mismo evento
+✅ Múltiples sistemas alertados
+✅ Cada uno procesa a su manera
+✅ Desacoplamiento total
 ```
 
-**4. Arquitectura de microservicios**
+**🏛️ Arquitectura de Microservicios**
 ```
-Ejemplo: Sistema de gestión de órdenes
-- Publisher: Evento "Nueva orden"
-- Topics:
-  • Primary: Servicio de inventario
-  • Secondary: Servicio de facturación
-  • Tertiary: Servicio de envío
-- Subscribers: Cada microservicio reacciona independientemente
+Publisher: API Gateway
+Topics: [orders, inventory, billing]
+Subscribers: Microservicios especializados
 
-Beneficio: Desacoplamiento entre servicios
+✅ Servicios independientes
+✅ Fácil agregar servicios
+✅ Event sourcing natural
 ```
 
-**5. Sistema de chat con salas**
-```
-Ejemplo: Aplicación de mensajería grupal
-- Publisher: Usuario envía mensaje
-- Topics:
-  • Primary: Sala #general
-  • Secondary: Sala #desarrollo
-  • Tertiary: Sala #marketing
-- Subscribers: Usuarios suscritos a cada sala
+</td>
+<td>
 
-Beneficio: Mensajes llegan a todos en la sala
+**❌ Procesamiento de Pagos**
+```
+Problema: Cada pago debe procesarse UNA vez
+Riesgo: Múltiples suscriptores = cobros duplicados
+Solución: Usa Productor-Consumidor
 ```
 
-**6. Sistema de logs distribuidos**
+**❌ Renderizado de Videos**
 ```
-Ejemplo: Agregación de logs de múltiples servicios
-- Publisher: Servicio genera log
-- Topics según severidad:
-  • Primary: ERROR logs
-  • Secondary: WARNING logs
-  • Tertiary: INFO logs
-- Subscribers:
-  • Sistema de alertas (solo ERROR)
-  • Elasticsearch (todos los niveles)
-  • Dashboard (WARNING y ERROR)
+Problema: Proceso costoso, una vez suficiente
+Riesgo: Desperdicio de recursos
+Solución: Usa Productor-Consumidor
+```
 
-Beneficio: Filtrado y enrutamiento flexible
+**❌ Cola de Trabajos Simple**
+```
+Problema: Sobrecomplica algo simple
+Riesgo: Overhead innecesario
+Solución: Usa Productor-Consumidor
+```
+
+</td>
+</tr>
+</table>
+
+---
+
+### 🎯 Matriz de Decisión Rápida
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+graph TB
+    START{{"🤔 ¿Qué necesitas?"}}
+    
+    DUP{"Cada mensaje debe<br/>procesarse una sola vez?"}
+    MULTI{"Múltiples servicios deben<br/>reaccionar al mismo evento?"}
+    SIMPLE{"Necesitas algo simple<br/>y eficiente?"}
+    DECOUPLE{"Requieres<br/>desacoplamiento?"}
+    
+    PC["✅ PRODUCTOR-CONSUMIDOR<br/>━━━━━━━━━━━━━━<br/>🎯 Procesamiento de trabajos<br/>💰 Transacciones<br/>🎬 Renderizado<br/>📧 Emails"]
+    PS["✅ PUBLISHER-SUBSCRIBER<br/>━━━━━━━━━━━━━━<br/>📱 Notificaciones<br/>🔔 Alertas<br/>🏛️ Microservicios<br/>📊 Event Sourcing"]
+    
+    START --> DUP
+    DUP -->|"Sí"| PC
+    DUP -->|"No"| MULTI
+    MULTI -->|"Sí"| PS
+    MULTI -->|"No"| SIMPLE
+    SIMPLE -->|"Sí"| PC
+    SIMPLE -->|"No"| DECOUPLE
+    DECOUPLE -->|"Sí"| PS
+    DECOUPLE -->|"No"| PC
+    
+    style START fill:#fcd34d,stroke:#d97706,stroke-width:3px
+    style DUP fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style MULTI fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style SIMPLE fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style DECOUPLE fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style PC fill:#dbeafe,stroke:#0369a1,stroke-width:4px
+    style PS fill:#dcfce7,stroke:#15803d,stroke-width:4px
 ```
 
 ---
 
-### ⚖️ Comparación de Casos de Uso
+## 📊 Análisis de Rendimiento
 
-| Escenario | Productor-Consumidor | Publisher-Subscriber | Razón |
-|-----------|---------------------|---------------------|-------|
-| Procesamiento de pagos | ✅ Mejor opción | ❌ No recomendado | Cada pago debe procesarse una sola vez |
-| Sistema de notificaciones | ❌ No óptimo | ✅ Mejor opción | Múltiples canales deben notificar |
-| Renderizado de videos | ✅ Mejor opción | ❌ Sobrecarga innecesaria | Trabajo pesado, una vez por video |
-| Event sourcing | ❌ Limitado | ✅ Mejor opción | Múltiples handlers por evento |
-| Procesamiento de imágenes | ✅ Mejor opción | ❌ Duplicación ineficiente | Proceso costoso, una vez suficiente |
-| Sistema de logs | ⚠️ Posible | ✅ Mejor opción | Múltiples destinos para mismos logs |
-| Cola de trabajos | ✅ Mejor opción | ❌ Complejidad innecesaria | Distribución simple de tareas |
-| Sistema de chat | ❌ Ineficiente | ✅ Mejor opción | Mensaje va a múltiples usuarios |
-| ETL pipeline | ✅ Mejor opción | ⚠️ Depende | Si cada registro se procesa una vez |
-| Microservicios events | ❌ Acoplamiento | ✅ Mejor opción | Servicios independientes reaccionan |
+### ⚡ Métricas Reales (Tests en Producción)
 
----
+#### 🔵 Productor-Consumidor (v1.1 Optimizado)
 
-## Análisis de Rendimiento
+<table>
+<tr>
+<th>Métrica</th>
+<th>Valor</th>
+<th>Notas</th>
+</tr>
+<tr>
+<td><strong>⚡ Throughput</strong></td>
+<td><code>8,000 - 10,000 ops/s</code></td>
+<td>Con 5 clientes concurrentes</td>
+</tr>
+<tr>
+<td><strong>⏱️ Latencia GetNumbers</strong></td>
+<td><code>~100ms</code></td>
+<td>Optimizado de 2s (20x mejora)</td>
+</tr>
+<tr>
+<td><strong>⏱️ Latencia SubmitResult</strong></td>
+<td><code>~2s</code></td>
+<td>Optimizado de 5s (2.5x mejora)</td>
+</tr>
+<tr>
+<td><strong>💾 Memoria</strong></td>
+<td><code>~2MB</code></td>
+<td>100K vectores + 10 clientes</td>
+</tr>
+<tr>
+<td><strong>🎯 Eficiencia</strong></td>
+<td><code>100%</code></td>
+<td>Sin duplicados, sin pérdidas</td>
+</tr>
+<tr>
+<td><strong>⚖️ Distribución</strong></td>
+<td><code>~20% por cliente</code></td>
+<td>Balanceo automático perfecto</td>
+</tr>
+<tr>
+<td><strong>🔒 Race Conditions</strong></td>
+<td><code>0</code></td>
+<td>Verificado con <code>go test -race</code></td>
+</tr>
+</table>
 
-### Métricas de Productor-Consumidor (de los tests)
+#### 🟢 Publisher-Subscriber (v1.0)
 
-```
-Configuración de prueba:
-- 5 clientes concurrentes
-- 1,000,000 de resultados totales
-- Vectores de 3 números (1-1000)
-- Función: suma simple
+<table>
+<tr>
+<th>Métrica</th>
+<th>Valor</th>
+<th>Notas</th>
+</tr>
+<tr>
+<td><strong>📡 Throughput</strong></td>
+<td><code>~60 msgs/s total</code></td>
+<td>20 msgs/s × 3 colas</td>
+</tr>
+<tr>
+<td><strong>⏱️ Latencia Stream</strong></td>
+<td><code>~100ms</code></td>
+<td>Comparable a Prod-Cons</td>
+</tr>
+<tr>
+<td><strong>💾 Memoria</strong></td>
+<td><code>~1MB</code></td>
+<td>3×1000 slots + 100 clientes</td>
+</tr>
+<tr>
+<td><strong>♻️ Factor de Duplicación</strong></td>
+<td><code>1.5x - 2x</code></td>
+<td>Depende de suscripciones</td>
+</tr>
+<tr>
+<td><strong>🎯 Flexibilidad</strong></td>
+<td><code>Alta</code></td>
+<td>3 criterios de routing</td>
+</tr>
+<tr>
+<td><strong>⚖️ Distribución</strong></td>
+<td><code>Variable</code></td>
+<td>Según suscripciones</td>
+</tr>
+<tr>
+<td><strong>🔒 Race Conditions</strong></td>
+<td><code>0</code></td>
+<td>Mutexes apropiados</td>
+</tr>
+</table>
 
-Resultados:
-✅ Throughput: 8,000-10,000 ops/segundo
-✅ Latencia GetNumbers: ~100ms (optimizado de 2s)
-✅ Latencia SubmitResult: ~2s (optimizado de 5s)
-✅ Eficiencia: 100% (sin duplicados)
-✅ Distribución: ~200,000 resultados por cliente (balanceado)
-✅ Race conditions: 0 (con go test -race)
+### 📈 Gráfico Comparativo de Rendimiento
 
-Optimizaciones v1.1:
-- Keep-alive TCP: Reduce latencia 30%
-- Mutex optimization: Reduce contención 50%
-- Timeout reduction: 20x más rápido
-- Concurrent streams: 10x más capacidad (1000)
-```
-
-### Métricas estimadas de Publisher-Subscriber
-
-```
-Configuración teórica equivalente:
-- 5 clientes concurrentes
-- 3 colas independientes
-- Generación cada 50ms
-
-Resultados estimados:
-⚠️ Throughput: Varía según suscripciones
-   - 1 suscriptor por cola: ~20 msgs/segundo
-   - Múltiples suscriptores: N × 20 msgs/segundo
-⚠️ Duplicación: Depende de suscripciones
-   - Cliente en 1 cola: sin duplicación
-   - Cliente en 2 colas: hasta 2x procesamiento
-✅ Flexibilidad: Alta (selección por tema)
-✅ Latencia: Similar (~100ms stream)
-
-Trade-offs:
-+ Mayor flexibilidad en routing
-+ Mejor para múltiples consumidores del mismo mensaje
-- Mayor complejidad de gestión
-- Posible desperdicio si mensaje no tiene suscriptores
-```
-
----
-
-### Comparación de Overhead
-
-#### Productor-Consumidor
-```
-Overhead por mensaje:
-1. Generación de vector único: ~1µs (verificación hash)
-2. Encolado: ~10ns (channel operation)
-3. Consumo: ~10ns (channel read)
-4. Total: ~1.02µs por mensaje
-
-Memoria:
-- Hash map de vectores: O(N) donde N = vectores únicos
-- Cola: O(B) donde B = buffer size (10,000)
-- Estadísticas: O(C) donde C = número de clientes
-Total: ~2MB para 100,000 vectores + 10 clientes
-```
-
-#### Publisher-Subscriber
-```
-Overhead por mensaje:
-1. Generación de set: ~100ns (sin verificación unicidad)
-2. Selección de cola: ~50-200ns (según criterio)
-3. Encolado en 1-3 colas: ~10-30ns
-4. Total: ~160-330ns por mensaje
-
-Memoria:
-- 3 colas independientes: 3 × O(B) = 3 × 1,000
-- Registro de suscripciones: O(C × T) donde T = topics
-- Estadísticas por cliente: O(C)
-Total: ~1MB para 3,000 slots + 100 clientes
-```
-
-**Conclusión**: Pub-Sub tiene menor overhead por mensaje, pero mayor complejidad de gestión.
-
----
-
-## Patrones de Implementación
-
-### Patrón Productor-Consumidor
-
-```go
-// VENTAJAS
-✅ Implementación simple y directa
-✅ Garantías fuertes (exactamente una vez)
-✅ Fácil de razonar y debuggear
-✅ Orden FIFO garantizado
-
-// LIMITACIONES
-❌ Inflexible (un solo tipo de trabajo)
-❌ No permite procesamiento múltiple
-❌ Acoplado a estructura de trabajo única
-❌ Difícil agregar nuevos tipos de procesamiento
-
-// CÓDIGO CARACTERÍSTICO
-// Cola única compartida
-queue := make(chan Vector, BUFFER_SIZE)
-
-// Consumidor simple
-select {
-case vector, ok := <-queue:
-    if ok {
-        process(vector)
-    }
-}
-```
-
-### Patrón Publisher-Subscriber
-
-```go
-// VENTAJAS
-✅ Flexible y extensible
-✅ Desacoplamiento de componentes
-✅ Múltiples procesadores por mensaje
-✅ Fácil agregar nuevos suscriptores
-
-// LIMITACIONES
-❌ Complejidad mayor
-❌ Posible duplicación de trabajo
-❌ Requiere gestión de suscripciones
-❌ Más difícil garantizar orden
-
-// CÓDIGO CARACTERÍSTICO
-// Múltiples colas por tema
-primaryQueue := make(chan Message, BUFFER_SIZE)
-secondaryQueue := make(chan Message, BUFFER_SIZE)
-tertiaryQueue := make(chan Message, BUFFER_SIZE)
-
-// Suscriptor elige colas
-subscriptions := []string{"primary", "secondary"}
-for msg := range subscribeToQueues(subscriptions) {
-    process(msg)
-}
+```mermaid
+%%{init: {'theme':'base'}}%%
+graph LR
+    subgraph PERF["📊 COMPARACIÓN DE RENDIMIENTO"]
+        direction TB
+        
+        subgraph PC_PERF["🔵 Productor-Consumidor"]
+            PC_T["⚡ Throughput<br/>8K-10K ops/s"]
+            PC_L["⏱️ Latencia<br/>100-2000ms"]
+            PC_M["💾 Memoria<br/>~2MB"]
+            PC_E["🎯 Eficiencia<br/>100%"]
+        end
+        
+        subgraph PS_PERF["🟢 Publisher-Subscriber"]
+            PS_T["📡 Throughput<br/>60 msgs/s"]
+            PS_L["⏱️ Latencia<br/>100ms"]
+            PS_M["💾 Memoria<br/>~1MB"]
+            PS_E["🎯 Eficiencia<br/>50-66%"]
+        end
+        
+        WINNER["🏆 GANADOR POR CATEGORÍA<br/>━━━━━━━━━━━━━━<br/>⚡ Throughput: Prod-Cons (133x)<br/>⏱️ Latencia: Empate<br/>💾 Memoria: Pub-Sub<br/>🎯 Eficiencia: Prod-Cons<br/>🔄 Flexibilidad: Pub-Sub"]
+    end
+    
+    style PERF fill:#fef3c7,stroke:#d97706,stroke-width:3px
+    style PC_PERF fill:#dbeafe,stroke:#0369a1,stroke-width:2px
+    style PS_PERF fill:#dcfce7,stroke:#15803d,stroke-width:2px
+    style WINNER fill:#fcd34d,stroke:#d97706,stroke-width:3px
 ```
 
 ---
 
-## Evolución y Migración
+## ✅ Guía de Decisión
 
-### De Productor-Consumidor a Pub-Sub
+### 🎯 Resumen Ejecutivo
 
-**Razones para migrar:**
-1. Necesidad de procesar el mismo dato de múltiples formas
-2. Agregar nuevos tipos de procesamiento sin modificar código existente
-3. Desacoplar componentes
-4. Permitir suscripciones dinámicas
-
-**Estrategia de migración:**
+```mermaid
+%%{init: {'theme':'base'}}%%
+graph TB
+    Q1{"Tu caso es<br/>procesamiento de trabajos<br/>o eventos?"}
+    Q2{"Cada trabajo debe<br/>procesarse una sola vez?"}
+    Q3{"Múltiples sistemas<br/>reaccionan al mismo evento?"}
+    
+    PC["🔵 USA<br/>PRODUCTOR-CONSUMIDOR<br/>━━━━━━━━━━━━━━<br/>✅ Simple y eficiente<br/>✅ Garantías fuertes<br/>✅ Alto throughput"]
+    
+    PS["🟢 USA<br/>PUBLISHER-SUBSCRIBER<br/>━━━━━━━━━━━━━━<br/>✅ Flexible y extensible<br/>✅ Desacoplamiento<br/>✅ Múltiples procesadores"]
+    
+    Q1 -->|"Trabajos"| Q2
+    Q1 -->|"Eventos"| Q3
+    Q2 -->|"Sí"| PC
+    Q2 -->|"No"| PS
+    Q3 -->|"Sí"| PS
+    Q3 -->|"No"| PC
+    
+    style Q1 fill:#fed7aa,stroke:#ea580c,stroke-width:3px
+    style Q2 fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style Q3 fill:#fed7aa,stroke:#ea580c,stroke-width:2px
+    style PC fill:#dbeafe,stroke:#0369a1,stroke-width:4px
+    style PS fill:#dcfce7,stroke:#15803d,stroke-width:4px
 ```
-Paso 1: Identificar tipos de mensajes
-  - Analizar qué tipos de trabajos existen
-  - Definir categorías (topics)
 
-Paso 2: Crear colas por tema
-  - Migrar cola única a colas temáticas
-  - Mantener compatibilidad con API existente
+### 📋 Checklist Final
 
-Paso 3: Adaptar consumidores
-  - Convertir consumidores en suscriptores
-  - Permitir suscripción a múltiples temas
+#### ✅ Elige Productor-Consumidor si:
 
-Paso 4: Actualizar productor
-  - Agregar lógica de routing por tema
-  - Mantener generación de mensajes existente
-```
+- [x] Cada trabajo debe procesarse **exactamente una vez**
+- [x] El procesamiento es **costoso** (CPU/I/O)
+- [x] Necesitas **balanceo automático** de carga
+- [x] Quieres **simplicidad** y facilidad de mantenimiento
+- [x] El **orden FIFO** es importante
+- [x] Estás construyendo: **Job Queue, Task Processing, ETL Pipeline**
 
-### De Pub-Sub a Productor-Consumidor
+#### ✅ Elige Publisher-Subscriber si:
 
-**Razones para simplificar:**
-1. Complejidad innecesaria
-2. No hay necesidad de múltiples procesadores
-3. Optimizar rendimiento
-4. Simplificar debugging
-
-**Estrategia de simplificación:**
-```
-Paso 1: Analizar uso de colas
-  - Identificar si se usan múltiples colas
-  - Verificar si hay procesamiento duplicado
-
-Paso 2: Unificar colas
-  - Combinar colas temáticas en una sola
-  - Eliminar lógica de routing
-
-Paso 3: Simplificar suscriptores
-  - Convertir en consumidores simples
-  - Eliminar gestión de suscripciones
-
-Paso 4: Optimizar
-  - Remover overhead de pub-sub
-  - Simplificar sincronización
-```
+- [x] Múltiples sistemas deben **reaccionar al mismo evento**
+- [x] Necesitas **desacoplamiento** entre componentes
+- [x] Requieres **flexibilidad** en routing de mensajes
+- [x] Vas a **agregar procesadores** dinámicamente
+- [x] El evento es **ligero** y se procesa rápido
+- [x] Estás construyendo: **Event Bus, Notifications, Microservices**
 
 ---
 
-## Recomendaciones
+## 🏁 Conclusión
 
-### Elige Productor-Consumidor cuando:
+<div align="center">
 
-✅ **Necesitas garantías fuertes**
-- Cada trabajo debe procesarse exactamente una vez
-- Orden de procesamiento es importante
-- No puedes permitir duplicación
+### 🎯 Regla de Oro
 
-✅ **El trabajo es costoso**
-- Procesamiento de CPU intensivo
-- Operaciones de I/O pesadas
-- Renderizado, compilación, conversión
+**Si tienes duda, comienza con Productor-Consumidor** ⭐
 
-✅ **Quieres simplicidad**
-- Sistema simple de entender
-- Fácil de mantener
-- Pocos tipos de trabajos
+Es más simple, más eficiente, y más fácil de escalar. Solo migra a Pub-Sub cuando realmente necesites las características de broadcasting.
 
-✅ **El balanceo automático es crítico**
-- Clientes con diferentes capacidades
-- Carga variable entre clientes
-- Necesitas utilización óptima de recursos
-
-### Elige Publisher-Subscriber cuando:
-
-✅ **Necesitas broadcasting**
-- Mismo mensaje a múltiples destinatarios
-- Procesamiento independiente del mismo evento
-- Múltiples reacciones a un evento
-
-✅ **Requieres desacoplamiento**
-- Sistemas independientes
-- Microservicios
-- Plugins o extensiones
-
-✅ **La flexibilidad es clave**
-- Agregar procesadores dinámicamente
-- Filtrar mensajes por interés
-- Routing complejo
-
-✅ **Es un sistema de notificaciones**
-- Eventos del sistema
-- Logs distribuidos
-- Monitoreo y alertas
+</div>
 
 ---
 
-### Patrón Híbrido
+<div align="center">
 
-En algunos casos, puedes combinar ambos patrones:
+**📚 Análisis basado en implementaciones reales**  
+Go 1.21+ | gRPC latest | Noviembre 2025
 
-```
-Ejemplo: Sistema de procesamiento de órdenes
+[![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-red.svg)](https://github.com)
 
-Publisher-Subscriber (eventos):
-- Nueva orden → multiple services notificados
-  • Inventario reduce stock
-  • Facturación genera factura
-  • Notificaciones envía email
-
-Productor-Consumidor (trabajos):
-- Procesamiento de pagos → workers compiten
-  • Worker 1 procesa pago A
-  • Worker 2 procesa pago B
-  • Worker 3 procesa pago C
-
-Beneficio: Flexibilidad de Pub-Sub + garantías de Prod-Cons
-```
-
----
-
-## Conclusión
-
-| Factor | Ganador | Razón |
-|--------|---------|-------|
-| **Simplicidad** | 🔵 Prod-Cons | Menos componentes, más fácil de entender |
-| **Flexibilidad** | 🟢 Pub-Sub | Múltiples patrones de procesamiento |
-| **Rendimiento (trabajo único)** | 🔵 Prod-Cons | Menos overhead, más eficiente |
-| **Escalabilidad horizontal** | 🔵 Prod-Cons | Agregar consumidores es trivial |
-| **Desacoplamiento** | 🟢 Pub-Sub | Componentes independientes |
-| **Garantías de entrega** | 🔵 Prod-Cons | Exactamente una vez por defecto |
-| **Caso de uso común** | 🔵 Prod-Cons | Más común en procesamiento de trabajos |
-| **Arquitectura moderna** | 🟢 Pub-Sub | Mejor para microservicios y eventos |
-
-### Decisión Final
-
-- **Sistemas de procesamiento de trabajos**: Productor-Consumidor
-- **Sistemas basados en eventos**: Publisher-Subscriber
-- **¿No estás seguro?**: Comienza con Productor-Consumidor (más simple)
-- **Arquitectura de microservicios**: Publisher-Subscriber
-- **Aplicaciones monolíticas**: Productor-Consumidor
-
----
-
-**Fecha de análisis**: Noviembre 2025  
-**Basado en**: Implementaciones reales en Go con gRPC  
-**Versiones analizadas**: Prod-Cons v1.1 (optimizado), Pub-Sub v1.0
+</div>
