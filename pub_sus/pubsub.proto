@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package pubsub;
+
+option go_package = "./proto";
+
+// Service definition for Publisher-Subscriber
+service PubSubService {
+  // Client subscribes to one or more queues
+  rpc Subscribe(SubscribeRequest) returns (stream NumberSet);
+
+  // Client sends processed result back to server
+  rpc SendResult(ResultRequest) returns (ResultResponse);
+
+  // Get server statistics (optional, for monitoring)
+  rpc GetStats(StatsRequest) returns (StatsResponse);
+}
+
+// Request to subscribe to queues
+message SubscribeRequest {
+  int32 client_id = 1;
+  repeated string queues = 2; // "primary", "secondary", "tertiary"
+}
+
+// A set of numbers published to a queue
+message NumberSet {
+  int32 message_id = 1;
+  repeated int32 numbers = 2;
+  string queue = 3;
+}
+
+// Result sent by client after processing
+message ResultRequest {
+  int32 client_id = 1;
+  int32 message_id = 2;
+  int32 result = 3;
+}
+
+message ResultResponse {
+  bool success = 1;
+}
+
+message StatsRequest {}
+
+message StatsResponse {
+  int32 total_results = 1;
+  int32 total_sum = 2;
+  repeated ClientStats clients = 3;
+}
+
+message ClientStats {
+  int32 client_id = 1;
+  repeated string subscribed_queues = 2;
+  int32 results_count = 3;
+}
